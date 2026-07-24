@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 import { CustomerPortalLayout } from "@/layouts/customer-portal-layout";
 import { getCustomerDashboard } from "@/services/print-jobs/print-job-service";
 import { requireCustomerContext } from "@/services/customer/customer-service";
@@ -9,16 +9,15 @@ export default async function CustomerDashboardPage() {
   // Enforce customer login and retrieve active user session
   const { user, organization } = await requireCustomerContext();
   const userEmail = user?.email || null;
-  
-  const orgSettings = await prisma.organizationSettings.findUnique({
-    where: { organizationId: organization.id }
-  });
-  const whatsappNumber = orgSettings?.supportPhone || null;
 
-  // Retrieve the actual active print job collections from database
+  // Retrieve independent page data concurrently; getCurrentSession is request-cached.
   let dashboardData;
+  let orgSettings;
   try {
-    dashboardData = await getCustomerDashboard();
+    [dashboardData, orgSettings] = await Promise.all([
+      getCustomerDashboard(),
+      prisma.organizationSettings.findUnique({ where: { organizationId: organization.id } }),
+    ]);
   } catch (error: any) {
     // If the error is a Next.js redirect thrown by authentication guards, let it bubble up
     if (error?.digest?.startsWith("NEXT_REDIRECT") || error?.message === "NEXT_REDIRECT") {
@@ -30,9 +29,12 @@ export default async function CustomerDashboardPage() {
       recentJobs: [],
       activeJobs: 0,
       completedJobs: 0,
-      unreadNotifications: 0
+      unreadNotifications: 0,
     };
+    orgSettings = null;
   }
+
+  const whatsappNumber = orgSettings?.supportPhone || null;
 
   // Pre-process real database entries for the high-fidelity UI
   const processedJobs = dashboardData.recentJobs.map((job) => ({
@@ -44,7 +46,7 @@ export default async function CustomerDashboardPage() {
     estimatedCost: Number(job.estimatedCost || 0),
     createdAt: job.createdAt.toISOString(),
     otpCode: job.otpCode || undefined,
-    shopName: "Apex Digital"
+    shopName: "Apex Digital",
   }));
 
   return (
@@ -63,4 +65,3 @@ export default async function CustomerDashboardPage() {
     </CustomerPortalLayout>
   );
 }
-

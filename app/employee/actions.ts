@@ -5,7 +5,7 @@ import { listPrintQueue, releasePrintJobByOtp } from "@/services/print-queue/que
 import { serializeData } from "@/lib/serialization";
 import { prisma } from "@/database/client";
 import { getEmployeeProfile, requireEmployeeContext } from "@/services/employee/employee-service";
-import { hashOtp } from "@/services/print-jobs/otp-utils";
+import { hashOtp, normalizeOtp, OTP_DIGITS } from "@/services/print-jobs/otp-utils";
 
 export async function fetchLiveQueue(filters?: { status?: string; priority?: string; q?: string }) {
   const result = await listPrintQueue({
@@ -16,7 +16,7 @@ export async function fetchLiveQueue(filters?: { status?: string; priority?: str
     assigned: "all",
     q: filters?.q || "",
     sort: "createdAt",
-    direction: "desc"
+    direction: "desc",
   });
   return serializeData(result.jobs);
 }
@@ -24,7 +24,10 @@ export async function fetchLiveQueue(filters?: { status?: string; priority?: str
 export async function verifyOtpForReviewAction(otp: string) {
   try {
     const { session, organization } = await requireEmployeeContext();
-    const cleanOtp = otp.trim();
+    const cleanOtp = normalizeOtp(otp);
+    if (cleanOtp.length !== OTP_DIGITS) {
+      return { success: false, error: `Please enter a valid ${OTP_DIGITS}-digit OTP code.` };
+    }
 
     let targetJobId: string | null = null;
 
@@ -34,26 +37,22 @@ export async function verifyOtpForReviewAction(otp: string) {
         codeHash: hashOtp(cleanOtp),
         status: "ACTIVE",
         expiresAt: { gt: new Date() },
-        printJob: { organizationId: organization.id }
+        printJob: { organizationId: organization.id },
       },
-      include: { printJob: true }
+      include: { printJob: true },
     });
 
     if (foundOtp) {
       targetJobId = foundOtp.printJobId;
     } else {
-      // 2. Try finding PrintJob directly where otpCodeHash matches or displayOtp matches, or id matches
-      const allOrgJobs = await prisma.printJob.findMany({
+      // 2. Fallback for legacy jobs with OTP columns on PrintJob, using indexed lookup.
+      const matchingJob = await prisma.printJob.findFirst({
         where: {
           organizationId: organization.id,
-          status: { notIn: ["COMPLETED", "CANCELLED", "FAILED"] }
-        }
-      });
-
-      const matchingJob = allOrgJobs.find((j) => {
-        if (j.otpCodeHash && j.otpCodeHash === hashOtp(cleanOtp)) return true;
-        if (j.otpCode && j.otpCode === cleanOtp) return true;
-        return false;
+          status: { notIn: ["COMPLETED", "CANCELLED", "FAILED"] },
+          OR: [{ otpCodeHash: hashOtp(cleanOtp) }, { otpCode: cleanOtp }],
+        },
+        select: { id: true },
       });
 
       if (matchingJob) {
@@ -66,13 +65,13 @@ export async function verifyOtpForReviewAction(otp: string) {
     }
 
     // Load the print job with dependencies
-    const job = await prisma.printJob.findUnique({
+    const job = await prisma.printJob.findFirst({
       where: { id: targetJobId, organizationId: organization.id },
       include: {
         customerUser: true,
         files: true,
-        printer: true
-      }
+        printer: true,
+      },
     });
 
     if (!job) {
@@ -83,11 +82,11 @@ export async function verifyOtpForReviewAction(otp: string) {
     if (foundOtp) {
       await prisma.printJobOtp.update({
         where: { id: foundOtp.id },
-        data: { 
-          status: "VERIFIED", 
+        data: {
+          status: "VERIFIED",
           verifiedAt: new Date(),
-          verifiedByUserId: session.userId 
-        }
+          verifiedByUserId: session.userId,
+        },
       });
     }
 
@@ -102,17 +101,17 @@ export async function verifyOtpForReviewAction(otp: string) {
               fromStatus: job.status,
               toStatus: "OTP_VERIFIED",
               actorUserId: session.userId,
-              note: "OTP successfully verified by employee. Job is now ready for review."
-            }
-          }
-        }
+              note: "OTP successfully verified by employee. Job is now ready for review.",
+            },
+          },
+        },
       });
       job.status = "OTP_VERIFIED";
     }
 
     return {
       success: true,
-      job: serializeData(job)
+      job: serializeData(job),
     };
   } catch (err: any) {
     unstable_rethrow(err);
@@ -135,7 +134,7 @@ export async function releaseJobWithUpdatedSettingsAction(
     fitToPage?: boolean;
   },
   newEstimatedCost: number,
-  reasonForModification?: string
+  reasonForModification?: string,
 ) {
   try {
     const { session, organization } = await requireEmployeeContext();
@@ -143,7 +142,7 @@ export async function releaseJobWithUpdatedSettingsAction(
     // Fetch the current job
     const job = await prisma.printJob.findUnique({
       where: { id: jobId, organizationId: organization.id },
-      include: { printer: true }
+      include: { printer: true },
     });
 
     if (!job) {
@@ -151,7 +150,7 @@ export async function releaseJobWithUpdatedSettingsAction(
     }
 
     const currentMeta = (job.metadata as any) || {};
-    
+
     // Save original settings if they aren't already saved
     if (!currentMeta.originalCustomerSettings) {
       currentMeta.originalCustomerSettings = {
@@ -171,9 +170,11 @@ export async function releaseJobWithUpdatedSettingsAction(
     // Merge updatedSettings into metadata
     const uploadConfig = currentMeta.uploadConfiguration || {};
     if (updatedSettings.paperSize !== undefined) uploadConfig.paperSize = updatedSettings.paperSize;
-    if (updatedSettings.orientation !== undefined) uploadConfig.orientation = updatedSettings.orientation;
+    if (updatedSettings.orientation !== undefined)
+      uploadConfig.orientation = updatedSettings.orientation;
     if (updatedSettings.pageRange !== undefined) uploadConfig.pageRange = updatedSettings.pageRange;
-    if (updatedSettings.printQuality !== undefined) uploadConfig.paperQuality = updatedSettings.printQuality;
+    if (updatedSettings.printQuality !== undefined)
+      uploadConfig.paperQuality = updatedSettings.printQuality;
     if (updatedSettings.scaling !== undefined) uploadConfig.scaling = updatedSettings.scaling;
     if (updatedSettings.fitToPage !== undefined) uploadConfig.fitToPage = updatedSettings.fitToPage;
 
@@ -190,11 +191,11 @@ export async function releaseJobWithUpdatedSettingsAction(
     if (!finalPrinterId) {
       // Find an online printer in the organization
       const onlinePrinter = await prisma.printer.findFirst({
-        where: { 
-          organizationId: organization.id, 
-          status: "ONLINE", 
-          deletedAt: null 
-        }
+        where: {
+          organizationId: organization.id,
+          status: "ONLINE",
+          deletedAt: null,
+        },
       });
       if (onlinePrinter) {
         finalPrinterId = onlinePrinter.id;
@@ -207,7 +208,7 @@ export async function releaseJobWithUpdatedSettingsAction(
       targetStatus = "PRINTING";
       await prisma.printer.update({
         where: { id: finalPrinterId },
-        data: { status: "BUSY" }
+        data: { status: "BUSY" },
       });
     }
 
@@ -228,16 +229,19 @@ export async function releaseJobWithUpdatedSettingsAction(
             fromStatus: job.status,
             toStatus: targetStatus,
             actorUserId: session.userId,
-            note: `Job released after review. Changes made: Color=${updatedSettings.color}, Copies=${updatedSettings.copies}, Duplex=${updatedSettings.duplex}, Printer=${finalPrinterId}. Reason: ${reasonForModification || "None"}`
-          }
-        }
-      }
+            note: `Job released after review. Changes made: Color=${updatedSettings.color}, Copies=${updatedSettings.copies}, Duplex=${updatedSettings.duplex}, Printer=${finalPrinterId}. Reason: ${reasonForModification || "None"}`,
+          },
+        },
+      },
     });
 
-    return { 
-      success: true, 
-      message: targetStatus === "PRINTING" ? "Job successfully sent to printer." : "Job verified and placed in queue.", 
-      job: serializeData(updatedJob) 
+    return {
+      success: true,
+      message:
+        targetStatus === "PRINTING"
+          ? "Job successfully sent to printer."
+          : "Job verified and placed in queue.",
+      job: serializeData(updatedJob),
     };
   } catch (error: any) {
     unstable_rethrow(error);
@@ -248,10 +252,10 @@ export async function releaseJobWithUpdatedSettingsAction(
 export async function submitOtpAction(otp: string) {
   try {
     const result = await releasePrintJobByOtp(otp);
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: result.message,
-      jobId: result.jobId 
+      jobId: result.jobId,
     };
   } catch (err: any) {
     unstable_rethrow(err);
@@ -271,10 +275,10 @@ export async function updateJobStatusAction(jobId: string, status: string) {
           create: {
             actorUserId: session.userId,
             toStatus: status as any,
-            note: `Status updated manually to ${status} by employee.`
-          }
-        }
-      }
+            note: `Status updated manually to ${status} by employee.`,
+          },
+        },
+      },
     });
     return { success: true, job: serializeData(job) };
   } catch (error: any) {
@@ -288,7 +292,7 @@ export async function updateJobPriorityAction(jobId: string, priority: string) {
     const { organization } = await requireEmployeeContext();
     const job = await prisma.printJob.update({
       where: { id: jobId, organizationId: organization.id },
-      data: { priority: priority as any }
+      data: { priority: priority as any },
     });
     return { success: true, job: serializeData(job) };
   } catch (error: any) {
@@ -302,7 +306,7 @@ export async function reassignJobPrinterAction(jobId: string, printerId: string 
     const { organization } = await requireEmployeeContext();
     const job = await prisma.printJob.update({
       where: { id: jobId, organizationId: organization.id },
-      data: { printerId }
+      data: { printerId },
     });
     return { success: true, job: serializeData(job) };
   } catch (error: any) {
@@ -323,10 +327,10 @@ export async function cancelJobAction(jobId: string) {
           create: {
             actorUserId: session.userId,
             toStatus: "CANCELLED",
-            note: "Job cancelled by employee."
-          }
-        }
-      }
+            note: "Job cancelled by employee.",
+          },
+        },
+      },
     });
     return { success: true, job: serializeData(job) };
   } catch (error: any) {
@@ -340,7 +344,7 @@ export async function bulkReleaseAction(jobIds: string[]) {
     const { organization, session } = await requireEmployeeContext();
     await prisma.printJob.updateMany({
       where: { id: { in: jobIds }, organizationId: organization.id },
-      data: { status: "PRINTING", processingStartedAt: new Date() }
+      data: { status: "PRINTING", processingStartedAt: new Date() },
     });
     return { success: true, message: `Successfully released ${jobIds.length} print jobs.` };
   } catch (error: any) {
@@ -354,7 +358,7 @@ export async function bulkCancelAction(jobIds: string[]) {
     const { organization } = await requireEmployeeContext();
     await prisma.printJob.updateMany({
       where: { id: { in: jobIds }, organizationId: organization.id },
-      data: { status: "CANCELLED", cancelledAt: new Date() }
+      data: { status: "CANCELLED", cancelledAt: new Date() },
     });
     return { success: true, message: `Cancelled ${jobIds.length} jobs.` };
   } catch (error: any) {
@@ -376,16 +380,16 @@ export async function fetchLiveSettingsData() {
     const awaitingJobs = await prisma.printJob.findMany({
       where: {
         organizationId: organization.id,
-        status: { in: ["READY", "PRINTING", "QUEUED", "ASSIGNED"] }
+        status: { in: ["READY", "PRINTING", "QUEUED", "ASSIGNED"] },
       },
       include: {
         customerUser: true,
-        files: true
+        files: true,
       },
       orderBy: {
-        createdAt: "desc"
+        createdAt: "desc",
       },
-      take: 20
+      take: 20,
     });
 
     return {
@@ -402,4 +406,3 @@ export async function fetchLiveSettingsData() {
     return { success: false, error: error.message || "Failed to fetch live settings data" };
   }
 }
-

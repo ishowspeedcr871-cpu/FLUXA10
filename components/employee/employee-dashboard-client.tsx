@@ -22,7 +22,7 @@ import {
   Copy,
   ChevronRight,
   ShieldCheck,
-  Ban
+  Ban,
 } from "lucide-react";
 import {
   fetchLiveQueue,
@@ -31,7 +31,7 @@ import {
   updateJobPriorityAction,
   cancelJobAction,
   verifyOtpForReviewAction,
-  releaseJobWithUpdatedSettingsAction
+  releaseJobWithUpdatedSettingsAction,
 } from "@/app/employee/actions";
 import { EmployeePrintReviewModal } from "@/components/employee/employee-print-review-modal";
 
@@ -72,16 +72,16 @@ interface Job {
   metadata?: any;
 }
 
-export function EmployeeDashboardClient({ 
-  initialJobs, 
-  initialPrinters = [] 
-}: { 
-  initialJobs: any[]; 
-  initialPrinters?: any[] 
+export function EmployeeDashboardClient({
+  initialJobs,
+  initialPrinters = [],
+}: {
+  initialJobs: any[];
+  initialPrinters?: any[];
 }) {
   const [jobs, setJobs] = useState<Job[]>(initialJobs || []);
   const [printers, setPrinters] = useState<any[]>(initialPrinters || []);
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", ""]);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -105,7 +105,7 @@ export function EmployeeDashboardClient({
         const liveJobs = await fetchLiveQueue({
           status: statusFilter === "ALL" ? "all" : statusFilter.toLowerCase(),
           priority: priorityFilter === "ALL" ? "all" : priorityFilter.toLowerCase(),
-          q: searchQuery
+          q: searchQuery,
         });
         setJobs(liveJobs);
       } catch (err) {
@@ -122,7 +122,7 @@ export function EmployeeDashboardClient({
         const liveJobs = await fetchLiveQueue({
           status: statusFilter === "ALL" ? "all" : statusFilter.toLowerCase(),
           priority: priorityFilter === "ALL" ? "all" : priorityFilter.toLowerCase(),
-          q: searchQuery
+          q: searchQuery,
         });
         setJobs(liveJobs);
       } catch (err) {
@@ -136,15 +136,17 @@ export function EmployeeDashboardClient({
     setSuccess(null);
     const cleanValue = value.replace(/\D/g, "");
     if (cleanValue.length > 1) {
-      const chars = cleanValue.slice(-6).split("");
-      const newOtp = ["", "", "", "", "", ""];
-      chars.forEach((c, idx) => { newOtp[idx] = c; });
+      const chars = cleanValue.slice(-4).split("");
+      const newOtp = ["", "", "", ""];
+      chars.forEach((c, idx) => {
+        newOtp[idx] = c;
+      });
       setOtp(newOtp);
-      const lastInput = document.getElementById(`otp-5`);
+      const lastInput = document.getElementById(`otp-3`);
       lastInput?.focus();
 
       const fullCode = newOtp.join("");
-      if (fullCode.length === 6) {
+      if (fullCode.length === 4) {
         handleReleaseByOtp(fullCode);
       }
       return;
@@ -155,9 +157,9 @@ export function EmployeeDashboardClient({
     setOtp(newOtp);
 
     const fullCode = newOtp.join("");
-    if (fullCode.length === 6) {
+    if (fullCode.length === 4) {
       handleReleaseByOtp(fullCode);
-    } else if (cleanValue && index < 5) {
+    } else if (cleanValue && index < 3) {
       const nextInput = document.getElementById(`otp-${index + 1}`);
       nextInput?.focus();
     } else if (!cleanValue && index > 0) {
@@ -168,8 +170,8 @@ export function EmployeeDashboardClient({
 
   const handleReleaseByOtp = async (codeToSubmit?: string) => {
     const code = codeToSubmit || otp.join("");
-    if (code.length !== 6) {
-      setError("Please enter a valid 6-digit OTP code");
+    if (code.length !== 4) {
+      setError("Please enter a valid 4-digit OTP code");
       return;
     }
 
@@ -193,7 +195,7 @@ export function EmployeeDashboardClient({
   const handleConfirmReviewRelease = async (
     updatedSettings: any,
     newCost: number,
-    reason: string
+    reason: string,
   ) => {
     if (!reviewJob) return;
     setReleasing(true);
@@ -201,7 +203,7 @@ export function EmployeeDashboardClient({
       reviewJob.id,
       updatedSettings,
       newCost,
-      reason
+      reason,
     );
     setReleasing(false);
 
@@ -219,18 +221,14 @@ export function EmployeeDashboardClient({
   const handleStatusChange = async (jobId: string, newStatus: string) => {
     const res = await updateJobStatusAction(jobId, newStatus);
     if (res.success) {
-      setJobs((prev) =>
-        prev.map((j) => (j.id === jobId ? { ...j, status: newStatus } : j))
-      );
+      setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status: newStatus } : j)));
     }
   };
 
   const handlePriorityChange = async (jobId: string, newPriority: string) => {
     const res = await updateJobPriorityAction(jobId, newPriority);
     if (res.success) {
-      setJobs((prev) =>
-        prev.map((j) => (j.id === jobId ? { ...j, priority: newPriority } : j))
-      );
+      setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, priority: newPriority } : j)));
     }
   };
 
@@ -238,9 +236,7 @@ export function EmployeeDashboardClient({
     if (!confirm("Are you sure you want to cancel this print job?")) return;
     const res = await cancelJobAction(jobId);
     if (res.success) {
-      setJobs((prev) =>
-        prev.map((j) => (j.id === jobId ? { ...j, status: "CANCELLED" } : j))
-      );
+      setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status: "CANCELLED" } : j)));
     }
   };
 
@@ -248,20 +244,16 @@ export function EmployeeDashboardClient({
   const metrics = useMemo(() => {
     const total = jobs.length;
     const pending = jobs.filter((j) =>
-      ["QUEUED", "OTP_GENERATED", "DRAFT", "READY"].includes(j.status)
+      ["QUEUED", "OTP_GENERATED", "DRAFT", "READY"].includes(j.status),
     ).length;
     const printing = jobs.filter((j) =>
-      ["PRINTING", "OTP_VERIFIED", "WAITING_FOR_PRINTER"].includes(j.status)
+      ["PRINTING", "OTP_VERIFIED", "WAITING_FOR_PRINTER"].includes(j.status),
     ).length;
     const completed = jobs.filter((j) =>
-      ["COMPLETED", "PRINT_COMPLETED", "RELEASED"].includes(j.status)
+      ["COMPLETED", "PRINT_COMPLETED", "RELEASED"].includes(j.status),
     ).length;
-    const failed = jobs.filter((j) =>
-      ["FAILED", "CANCELLED", "ERROR"].includes(j.status)
-    ).length;
-    const urgent = jobs.filter(
-      (j) => j.priority === "URGENT" || j.priority === "HIGH"
-    ).length;
+    const failed = jobs.filter((j) => ["FAILED", "CANCELLED", "ERROR"].includes(j.status)).length;
+    const urgent = jobs.filter((j) => j.priority === "URGENT" || j.priority === "HIGH").length;
 
     return { total, pending, printing, completed, failed, urgent };
   }, [jobs]);
@@ -270,10 +262,23 @@ export function EmployeeDashboardClient({
   const filteredJobs = useMemo(() => {
     return jobs.filter((job) => {
       // Status filter
-      if (statusFilter === "PENDING" && !["QUEUED", "OTP_GENERATED", "DRAFT", "READY"].includes(job.status)) return false;
-      if (statusFilter === "PRINTING" && !["PRINTING", "OTP_VERIFIED", "WAITING_FOR_PRINTER"].includes(job.status)) return false;
-      if (statusFilter === "COMPLETED" && !["COMPLETED", "PRINT_COMPLETED", "RELEASED"].includes(job.status)) return false;
-      if (statusFilter === "FAILED" && !["FAILED", "CANCELLED", "ERROR"].includes(job.status)) return false;
+      if (
+        statusFilter === "PENDING" &&
+        !["QUEUED", "OTP_GENERATED", "DRAFT", "READY"].includes(job.status)
+      )
+        return false;
+      if (
+        statusFilter === "PRINTING" &&
+        !["PRINTING", "OTP_VERIFIED", "WAITING_FOR_PRINTER"].includes(job.status)
+      )
+        return false;
+      if (
+        statusFilter === "COMPLETED" &&
+        !["COMPLETED", "PRINT_COMPLETED", "RELEASED"].includes(job.status)
+      )
+        return false;
+      if (statusFilter === "FAILED" && !["FAILED", "CANCELLED", "ERROR"].includes(job.status))
+        return false;
 
       // Priority filter
       if (priorityFilter !== "ALL" && job.priority !== priorityFilter) return false;
@@ -285,7 +290,9 @@ export function EmployeeDashboardClient({
         const titleMatch = job.title.toLowerCase().includes(q);
         const idMatch = job.id.toLowerCase().includes(q);
         const otpMatch = String(displayOtp).includes(q);
-        const customerMatch = (job.customerUser?.name || job.customerUser?.email || "").toLowerCase().includes(q);
+        const customerMatch = (job.customerUser?.name || job.customerUser?.email || "")
+          .toLowerCase()
+          .includes(q);
         const fileMatch = job.files?.some((f) => f.fileName.toLowerCase().includes(q));
 
         if (!titleMatch && !idMatch && !otpMatch && !customerMatch && !fileMatch) {
@@ -305,25 +312,25 @@ export function EmployeeDashboardClient({
         return {
           label: "COMPLETED",
           style: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-          icon: CheckCircle2
+          icon: CheckCircle2,
         };
       case "PRINTING":
         return {
           label: "PRINTING",
           style: "bg-cyan-500/10 text-cyan-400 border-cyan-500/40 animate-pulse",
-          icon: RefreshCw
+          icon: RefreshCw,
         };
       case "OTP_VERIFIED":
         return {
           label: "VERIFIED",
           style: "bg-cyan-400/20 text-cyan-300 border-cyan-400/50 font-black",
-          icon: ShieldCheck
+          icon: ShieldCheck,
         };
       case "WAITING_FOR_PRINTER":
         return {
           label: "WAITING PRINTER",
           style: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-          icon: Clock
+          icon: Clock,
         };
       case "QUEUED":
       case "OTP_GENERATED":
@@ -331,7 +338,7 @@ export function EmployeeDashboardClient({
         return {
           label: "PENDING",
           style: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
-          icon: Clock
+          icon: Clock,
         };
       case "FAILED":
       case "CANCELLED":
@@ -339,13 +346,13 @@ export function EmployeeDashboardClient({
         return {
           label: "CANCELLED / FAILED",
           style: "bg-rose-500/10 text-rose-400 border-rose-500/30",
-          icon: XCircle
+          icon: XCircle,
         };
       default:
         return {
           label: status,
           style: "bg-white/5 text-slate-400 border-white/10",
-          icon: FileText
+          icon: FileText,
         };
     }
   };
@@ -368,7 +375,9 @@ export function EmployeeDashboardClient({
       {/* 1. TOP TOOLBAR & QUICK METRICS BAR */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <div className="bg-[#0b0b12] border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Queue</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            Total Queue
+          </span>
           <div className="flex items-baseline justify-between mt-1">
             <span className="text-2xl font-black text-white">{metrics.total}</span>
             <Layers className="size-4 text-slate-500" />
@@ -376,7 +385,9 @@ export function EmployeeDashboardClient({
         </div>
 
         <div className="bg-[#0b0b12] border border-yellow-500/20 rounded-2xl p-4 flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-wider">Pending OTP</span>
+          <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-wider">
+            Pending OTP
+          </span>
           <div className="flex items-baseline justify-between mt-1">
             <span className="text-2xl font-black text-yellow-400">{metrics.pending}</span>
             <Clock className="size-4 text-yellow-400/60" />
@@ -384,7 +395,9 @@ export function EmployeeDashboardClient({
         </div>
 
         <div className="bg-[#0b0b12] border border-cyan-500/20 rounded-2xl p-4 flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">In Production</span>
+          <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">
+            In Production
+          </span>
           <div className="flex items-baseline justify-between mt-1">
             <span className="text-2xl font-black text-cyan-400">{metrics.printing}</span>
             <Printer className="size-4 text-cyan-400/60" />
@@ -392,7 +405,9 @@ export function EmployeeDashboardClient({
         </div>
 
         <div className="bg-[#0b0b12] border border-emerald-500/20 rounded-2xl p-4 flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Completed</span>
+          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+            Completed
+          </span>
           <div className="flex items-baseline justify-between mt-1">
             <span className="text-2xl font-black text-emerald-400">{metrics.completed}</span>
             <CheckCircle2 className="size-4 text-emerald-400/60" />
@@ -400,7 +415,9 @@ export function EmployeeDashboardClient({
         </div>
 
         <div className="bg-[#0b0b12] border border-rose-500/20 rounded-2xl p-4 flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">Urgent / High</span>
+          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">
+            Urgent / High
+          </span>
           <div className="flex items-baseline justify-between mt-1">
             <span className="text-2xl font-black text-rose-400">{metrics.urgent}</span>
             <Zap className="size-4 text-rose-400/60" />
@@ -408,7 +425,9 @@ export function EmployeeDashboardClient({
         </div>
 
         <div className="bg-[#0b0b12] border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alerts / Failed</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            Alerts / Failed
+          </span>
           <div className="flex items-baseline justify-between mt-1">
             <span className="text-2xl font-black text-slate-300">{metrics.failed}</span>
             <AlertTriangle className="size-4 text-slate-500" />
@@ -433,7 +452,7 @@ export function EmployeeDashboardClient({
                 </span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Ask customer for their 6-digit Pickup OTP to unlock & start printing immediately.
+                Ask customer for their 4-digit Pickup OTP to unlock & start printing immediately.
               </p>
             </div>
           </div>
@@ -466,7 +485,11 @@ export function EmployeeDashboardClient({
               disabled={verifying}
               className="w-full sm:w-auto h-12 px-6 bg-cyan-400 hover:bg-cyan-300 text-black font-extrabold text-xs tracking-wider uppercase rounded-xl transition-all duration-200 shadow-[0_0_20px_rgba(0,255,255,0.3)] disabled:opacity-50 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
             >
-              {verifying ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}
+              {verifying ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Printer className="size-4" />
+              )}
               {verifying ? "Verifying..." : "RELEASE JOB"}
             </button>
           </div>
@@ -534,11 +557,21 @@ export function EmployeeDashboardClient({
             onChange={(e) => setPriorityFilter(e.target.value)}
             className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-slate-300 focus:outline-none focus:border-cyan-400/50 cursor-pointer"
           >
-            <option value="ALL" className="bg-[#0b0b12] text-white">All Priorities</option>
-            <option value="URGENT" className="bg-[#0b0b12] text-rose-400">Urgent Only</option>
-            <option value="HIGH" className="bg-[#0b0b12] text-amber-400">High Only</option>
-            <option value="NORMAL" className="bg-[#0b0b12] text-cyan-400">Normal Only</option>
-            <option value="LOW" className="bg-[#0b0b12] text-slate-400">Low Only</option>
+            <option value="ALL" className="bg-[#0b0b12] text-white">
+              All Priorities
+            </option>
+            <option value="URGENT" className="bg-[#0b0b12] text-rose-400">
+              Urgent Only
+            </option>
+            <option value="HIGH" className="bg-[#0b0b12] text-amber-400">
+              High Only
+            </option>
+            <option value="NORMAL" className="bg-[#0b0b12] text-cyan-400">
+              Normal Only
+            </option>
+            <option value="LOW" className="bg-[#0b0b12] text-slate-400">
+              Low Only
+            </option>
           </select>
 
           {/* Manual Refresh */}
@@ -557,7 +590,9 @@ export function EmployeeDashboardClient({
       {filteredJobs.length === 0 ? (
         <div className="border border-white/10 rounded-2xl bg-[#08080d] py-16 text-center space-y-3">
           <Printer className="size-10 text-slate-600 mx-auto" />
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">No matching print jobs in queue</h3>
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+            No matching print jobs in queue
+          </h3>
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
             Try adjusting your search query or status filter. Real-time background sync is active.
           </p>
@@ -565,7 +600,7 @@ export function EmployeeDashboardClient({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredJobs.map((job) => {
-            const displayOtp = job.otpCode || job.id.slice(-6).toUpperCase();
+            const displayOtp = job.otpCode || job.id.slice(-4).toUpperCase();
             const statusBadge = getStatusBadge(job.status);
             const StatusIcon = statusBadge.icon;
             const priorityStyle = getPriorityBadge(job.priority);
@@ -582,7 +617,9 @@ export function EmployeeDashboardClient({
                   <div className="flex items-start justify-between gap-3">
                     {/* Customer OTP Box (Large and Bold) */}
                     <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-400/40 rounded-xl px-3.5 py-1.5 flex items-center gap-2 shadow-[0_0_15px_rgba(0,255,255,0.1)]">
-                      <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-widest">OTP:</span>
+                      <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-widest">
+                        OTP:
+                      </span>
                       <span className="text-xl font-black text-white tracking-widest font-mono">
                         {displayOtp}
                       </span>
@@ -608,35 +645,45 @@ export function EmployeeDashboardClient({
                         {job.customerUser?.name || job.customerUser?.email || "Guest Customer"}
                       </span>
                       <span className="text-slate-600">•</span>
-                      <span className="text-[10px] text-slate-500 font-mono">#{job.id.slice(-6).toUpperCase()}</span>
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        #{job.id.slice(-4).toUpperCase()}
+                      </span>
                     </div>
                   </div>
 
                   {/* Print Technical Specifications Grid */}
                   <div className="grid grid-cols-2 gap-2 bg-white/5 border border-white/5 rounded-xl p-3 text-[11px]">
                     <div>
-                      <span className="text-slate-500 block text-[9px] uppercase font-bold">File / Specs</span>
+                      <span className="text-slate-500 block text-[9px] uppercase font-bold">
+                        File / Specs
+                      </span>
                       <span className="text-slate-300 font-medium truncate block mt-0.5">
                         {job.files?.[0]?.fileName || "Document.pdf"}
                       </span>
                     </div>
 
                     <div>
-                      <span className="text-slate-500 block text-[9px] uppercase font-bold">Pages & Copies</span>
+                      <span className="text-slate-500 block text-[9px] uppercase font-bold">
+                        Pages & Copies
+                      </span>
                       <span className="text-cyan-400 font-bold block mt-0.5">
                         {job.pageCount || 1} pgs × {job.copies} {job.copies > 1 ? "copies" : "copy"}
                       </span>
                     </div>
 
                     <div>
-                      <span className="text-slate-500 block text-[9px] uppercase font-bold">Format & Color</span>
+                      <span className="text-slate-500 block text-[9px] uppercase font-bold">
+                        Format & Color
+                      </span>
                       <span className="text-slate-300 font-medium block mt-0.5">
                         {job.color ? "Full Color" : "B&W"} • {job.duplex ? "Duplex" : "Simplex"}
                       </span>
                     </div>
 
                     <div>
-                      <span className="text-slate-500 block text-[9px] uppercase font-bold">Cost / Payment</span>
+                      <span className="text-slate-500 block text-[9px] uppercase font-bold">
+                        Cost / Payment
+                      </span>
                       <span className="text-emerald-400 font-bold block mt-0.5">
                         ₹{Number(job.estimatedCost || 0).toFixed(2)} • PAID
                       </span>
@@ -653,7 +700,10 @@ export function EmployeeDashboardClient({
                     </div>
 
                     <span className="text-[10px] text-slate-500 font-mono">
-                      {new Date(job.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(job.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                   </div>
                 </div>
@@ -682,7 +732,9 @@ export function EmployeeDashboardClient({
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold tracking-wider border ${priorityStyle}`}>
+                    <span
+                      className={`px-2 py-0.5 rounded text-[9px] font-extrabold tracking-wider border ${priorityStyle}`}
+                    >
                       {job.priority}
                     </span>
 
@@ -733,32 +785,45 @@ export function EmployeeDashboardClient({
             </div>
 
             <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-2xl p-4 text-center">
-              <span className="text-xs text-cyan-300 font-bold uppercase tracking-wider block">Customer Verification OTP</span>
+              <span className="text-xs text-cyan-300 font-bold uppercase tracking-wider block">
+                Customer Verification OTP
+              </span>
               <span className="text-3xl font-black text-white font-mono tracking-widest mt-1 block">
-                {selectedJob.otpCode || selectedJob.id.slice(-6).toUpperCase()}
+                {selectedJob.otpCode || selectedJob.id.slice(-4).toUpperCase()}
               </span>
             </div>
 
             <div className="space-y-2 text-xs text-slate-300">
               <div className="flex justify-between py-1.5 border-b border-white/5">
                 <span className="text-slate-400">Customer:</span>
-                <span className="font-bold text-white">{selectedJob.customerUser?.name || selectedJob.customerUser?.email}</span>
+                <span className="font-bold text-white">
+                  {selectedJob.customerUser?.name || selectedJob.customerUser?.email}
+                </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-white/5">
                 <span className="text-slate-400">File Name:</span>
-                <span className="font-bold text-cyan-300">{selectedJob.files?.[0]?.fileName || "Document.pdf"}</span>
+                <span className="font-bold text-cyan-300">
+                  {selectedJob.files?.[0]?.fileName || "Document.pdf"}
+                </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-white/5">
                 <span className="text-slate-400">Pages / Copies:</span>
-                <span className="font-bold text-white">{selectedJob.pageCount || 1} pages × {selectedJob.copies} copies</span>
+                <span className="font-bold text-white">
+                  {selectedJob.pageCount || 1} pages × {selectedJob.copies} copies
+                </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-white/5">
                 <span className="text-slate-400">Print Mode:</span>
-                <span className="font-bold text-white">{selectedJob.color ? "Full Color" : "B&W"} • {selectedJob.duplex ? "Duplex" : "Simplex"}</span>
+                <span className="font-bold text-white">
+                  {selectedJob.color ? "Full Color" : "B&W"} •{" "}
+                  {selectedJob.duplex ? "Duplex" : "Simplex"}
+                </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-white/5">
                 <span className="text-slate-400">Estimated Cost:</span>
-                <span className="font-bold text-emerald-400">₹{Number(selectedJob.estimatedCost || 0).toFixed(2)} (PAID)</span>
+                <span className="font-bold text-emerald-400">
+                  ₹{Number(selectedJob.estimatedCost || 0).toFixed(2)} (PAID)
+                </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-white/5">
                 <span className="text-slate-400">Current Status:</span>

@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 import { EmployeePortalLayout } from "@/layouts/employee-portal-layout";
 import { listPrintQueue } from "@/services/print-queue/queue-service";
 import { EmployeeDashboardClient } from "@/components/employee/employee-dashboard-client";
@@ -11,34 +11,38 @@ export default async function EmployeeDashboardPage() {
   try {
     const { organization } = await requireQueueAccess();
 
-    // Fetch initial queue
-    const data = await listPrintQueue({
-      page: 1,
-      pageSize: 20,
-      status: "all",
-      priority: "all",
-      assigned: "all",
-      sort: "createdAt",
-      direction: "desc"
-    });
-
-    const printers = await prisma.printer.findMany({
-      where: { organizationId: organization.id, deletedAt: null },
-      orderBy: { name: "asc" }
-    });
+    // Fetch independent queue and printer data concurrently; auth session is request-cached.
+    const [data, printers] = await Promise.all([
+      listPrintQueue({
+        page: 1,
+        pageSize: 20,
+        status: "all",
+        priority: "all",
+        assigned: "all",
+        sort: "createdAt",
+        direction: "desc",
+      }),
+      prisma.printer.findMany({
+        where: { organizationId: organization.id, deletedAt: null },
+        orderBy: { name: "asc" },
+      }),
+    ]);
 
     const serializedJobs = serializeData(data.jobs);
     const serializedPrinters = serializeData(printers);
 
     return (
       <EmployeePortalLayout>
-        <EmployeeDashboardClient initialJobs={serializedJobs} initialPrinters={serializedPrinters} />
+        <EmployeeDashboardClient
+          initialJobs={serializedJobs}
+          initialPrinters={serializedPrinters}
+        />
       </EmployeePortalLayout>
     );
   } catch (error: any) {
     console.error("Employee dashboard error:", error);
-    
-    if (error?.digest?.startsWith('NEXT_REDIRECT')) {
+
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) {
       throw error;
     }
 
@@ -49,7 +53,9 @@ export default async function EmployeeDashboardPage() {
             <AlertCircle className="size-8 text-red-500" />
           </div>
           <h2 className="text-xl font-bold">Failed to load queue</h2>
-          <p className="text-sm text-muted-foreground">An error occurred while connecting to the queue service.</p>
+          <p className="text-sm text-muted-foreground">
+            An error occurred while connecting to the queue service.
+          </p>
         </div>
       </EmployeePortalLayout>
     );

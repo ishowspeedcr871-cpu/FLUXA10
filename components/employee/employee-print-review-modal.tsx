@@ -14,7 +14,7 @@ import {
   Scale,
   Settings,
   HelpCircle,
-  FileDown
+  FileDown,
 } from "lucide-react";
 import { RealPdfCanvas } from "@/components/pdf/real-pdf-canvas";
 
@@ -22,11 +22,7 @@ interface EmployeePrintReviewModalProps {
   job: any;
   printers?: any[];
   onClose: () => void;
-  onConfirmRelease: (
-    updatedSettings: any,
-    newCost: number,
-    reason: string
-  ) => Promise<void>;
+  onConfirmRelease: (updatedSettings: any, newCost: number, reason: string) => Promise<void>;
   isReleasing?: boolean;
 }
 
@@ -59,12 +55,13 @@ export function EmployeePrintReviewModal({
   const rate = color ? 10 : 2;
   const newTotalCost = pageCount * copies * rate;
 
-  const displayOtp = job?.otpCode || (job?.id && job.id.length >= 6 ? job.id.slice(-6).toUpperCase() : "000000");
+  const displayOtp =
+    job?.otpCode || (job?.id && job.id.length >= 4 ? job.id.slice(-4).toUpperCase() : "0000");
 
   // Pre-fill printerId if empty and printers list is available
   useEffect(() => {
     if (!printerId && printers.length > 0) {
-      const onlinePrinter = printers.find(p => p.status === "ONLINE") || printers[0];
+      const onlinePrinter = printers.find((p) => p.status === "ONLINE") || printers[0];
       setPrinterId(onlinePrinter.id);
     }
   }, [printers, printerId]);
@@ -85,13 +82,13 @@ export function EmployeePrintReviewModal({
         fitToPage,
       },
       newTotalCost,
-      reason
+      reason,
     );
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto select-none">
-      <div 
+      <div
         id="print-review-modal-container"
         className="bg-[#0b0c14] border border-white/10 rounded-[28px] max-w-5xl w-full p-6 md:p-8 space-y-6 relative shadow-2xl my-8"
       >
@@ -109,7 +106,8 @@ export function EmployeePrintReviewModal({
                 </span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Verify parameters, adjust specifications for quality or economy, and release to print.
+                Verify parameters, adjust specifications for quality or economy, and release to
+                print.
               </p>
             </div>
           </div>
@@ -126,26 +124,32 @@ export function EmployeePrintReviewModal({
         {/* Info Highlights Bar */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-white/[0.02] border border-white/5 rounded-2xl p-4 text-xs">
           <div>
-            <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-wider">Customer Name</span>
+            <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-wider">
+              Customer Name
+            </span>
             <span className="text-white font-bold flex items-center gap-1.5 mt-0.5">
               <User className="size-3.5 text-cyan-400" />
               {job?.customerUser?.name || job?.customerUser?.email || "Guest Customer"}
             </span>
           </div>
           <div>
-            <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-wider">Verification OTP</span>
+            <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-wider">
+              Verification OTP
+            </span>
             <span className="text-cyan-300 font-black tracking-widest font-mono text-sm mt-0.5 block">
               {displayOtp}
             </span>
           </div>
           <div>
-            <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-wider">Job ID reference</span>
-            <span className="text-slate-300 font-mono mt-0.5 block">
-              #{job?.id?.toUpperCase()}
+            <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-wider">
+              Job ID reference
             </span>
+            <span className="text-slate-300 font-mono mt-0.5 block">#{job?.id?.toUpperCase()}</span>
           </div>
           <div>
-            <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-wider">Total pages</span>
+            <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-wider">
+              Total pages
+            </span>
             <span className="text-emerald-400 font-bold flex items-center gap-1.5 mt-0.5">
               <FileText className="size-3.5 text-emerald-400" />
               {pageCount} {pageCount === 1 ? "page" : "pages"} detected
@@ -155,7 +159,6 @@ export function EmployeePrintReviewModal({
 
         {/* Main Content Side-by-Side Panel */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
           {/* LEFT PANEL: High Fidelity PDF Preview Card */}
           <div className="lg:col-span-5 space-y-4">
             <div className="border border-white/10 rounded-2xl bg-black/40 overflow-hidden relative">
@@ -185,17 +188,23 @@ export function EmployeePrintReviewModal({
               {/* Warning/Guide Label */}
               <div className="p-3 bg-white/[0.02] border-t border-white/5 text-[10px] text-slate-400 flex items-center gap-2">
                 <Info className="size-3.5 text-cyan-400 shrink-0" />
-                <span>Generating interactive high-fidelity viewport matching the target print specs.</span>
+                <span>
+                  Generating interactive high-fidelity viewport matching the target print specs.
+                </span>
               </div>
             </div>
 
             {/* Original Customer Request Parameters Summary */}
             <div className="bg-[#0e0f18] border border-white/5 rounded-2xl p-4 space-y-2.5">
-              <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider block">Original Customer Request</span>
+              <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider block">
+                Original Customer Request
+              </span>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Color mode:</span>
-                  <span className="font-semibold text-white">{job?.color ? "Full Color" : "B&W"}</span>
+                  <span className="font-semibold text-white">
+                    {job?.color ? "Full Color" : "B&W"}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Copies:</span>
@@ -207,7 +216,9 @@ export function EmployeePrintReviewModal({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Duplex:</span>
-                  <span className="font-semibold text-white">{job?.duplex ? "Double-Sided" : "Single-Sided"}</span>
+                  <span className="font-semibold text-white">
+                    {job?.duplex ? "Double-Sided" : "Single-Sided"}
+                  </span>
                 </div>
               </div>
             </div>
@@ -222,17 +233,20 @@ export function EmployeePrintReviewModal({
 
               {/* Specs Grid Controls */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
                 {/* 1. Color / B&W switch */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Color Mode</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Color Mode
+                  </label>
                   <div className="flex bg-black/40 border border-white/10 rounded-xl p-1 text-xs">
                     <button
                       id="bw-toggle-btn"
                       type="button"
                       onClick={() => setColor(false)}
                       className={`flex-1 py-1.5 rounded-lg font-bold uppercase cursor-pointer tracking-wider transition-all ${
-                        !color ? "bg-white/10 text-white shadow-sm border border-white/5" : "text-slate-400 hover:text-white"
+                        !color
+                          ? "bg-white/10 text-white shadow-sm border border-white/5"
+                          : "text-slate-400 hover:text-white"
                       }`}
                     >
                       B&W (₹2/pg)
@@ -242,7 +256,9 @@ export function EmployeePrintReviewModal({
                       type="button"
                       onClick={() => setColor(true)}
                       className={`flex-1 py-1.5 rounded-lg font-bold uppercase cursor-pointer tracking-wider transition-all ${
-                        color ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm" : "text-slate-400 hover:text-white"
+                        color
+                          ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm"
+                          : "text-slate-400 hover:text-white"
                       }`}
                     >
                       Color (₹10/pg)
@@ -252,11 +268,13 @@ export function EmployeePrintReviewModal({
 
                 {/* 2. Copies Counter */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Copies to Print</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Copies to Print
+                  </label>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setCopies(prev => Math.max(1, prev - 1))}
+                      onClick={() => setCopies((prev) => Math.max(1, prev - 1))}
                       className="size-9 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg font-black transition-all cursor-pointer flex items-center justify-center text-sm"
                     >
                       -
@@ -272,7 +290,7 @@ export function EmployeePrintReviewModal({
                     />
                     <button
                       type="button"
-                      onClick={() => setCopies(prev => prev + 1)}
+                      onClick={() => setCopies((prev) => prev + 1)}
                       className="size-9 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg font-black transition-all cursor-pointer flex items-center justify-center text-sm"
                     >
                       +
@@ -282,30 +300,44 @@ export function EmployeePrintReviewModal({
 
                 {/* 3. Paper Size Select */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Paper size format</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Paper size format
+                  </label>
                   <select
                     id="paper-size-select"
                     value={paperSize}
                     onChange={(e) => setPaperSize(e.target.value)}
                     className="w-full h-9 bg-black/40 border border-white/10 rounded-lg px-3 text-xs text-white font-bold focus:outline-none focus:border-cyan-400/50 cursor-pointer"
                   >
-                    <option value="A4" className="bg-[#0b0b12] text-white">A4 (Standard)</option>
-                    <option value="A3" className="bg-[#0b0b12] text-white">A3 (Poster / Ledger)</option>
-                    <option value="Letter" className="bg-[#0b0b12] text-white">Letter (US format)</option>
-                    <option value="Legal" className="bg-[#0b0b12] text-white">US Legal</option>
+                    <option value="A4" className="bg-[#0b0b12] text-white">
+                      A4 (Standard)
+                    </option>
+                    <option value="A3" className="bg-[#0b0b12] text-white">
+                      A3 (Poster / Ledger)
+                    </option>
+                    <option value="Letter" className="bg-[#0b0b12] text-white">
+                      Letter (US format)
+                    </option>
+                    <option value="Legal" className="bg-[#0b0b12] text-white">
+                      US Legal
+                    </option>
                   </select>
                 </div>
 
                 {/* 4. Duplex Switch */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Duplex format</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Duplex format
+                  </label>
                   <div className="flex bg-black/40 border border-white/10 rounded-xl p-1 text-xs">
                     <button
                       id="duplex-false-btn"
                       type="button"
                       onClick={() => setDuplex(false)}
                       className={`flex-1 py-1.5 rounded-lg font-bold cursor-pointer transition-all ${
-                        !duplex ? "bg-white/10 text-white shadow-sm border border-white/5" : "text-slate-400 hover:text-white"
+                        !duplex
+                          ? "bg-white/10 text-white shadow-sm border border-white/5"
+                          : "text-slate-400 hover:text-white"
                       }`}
                     >
                       Single-Sided
@@ -315,7 +347,9 @@ export function EmployeePrintReviewModal({
                       type="button"
                       onClick={() => setDuplex(true)}
                       className={`flex-1 py-1.5 rounded-lg font-bold cursor-pointer transition-all ${
-                        duplex ? "bg-white/10 text-white shadow-sm border border-white/5" : "text-slate-400 hover:text-white"
+                        duplex
+                          ? "bg-white/10 text-white shadow-sm border border-white/5"
+                          : "text-slate-400 hover:text-white"
                       }`}
                     >
                       Double-Sided
@@ -325,14 +359,18 @@ export function EmployeePrintReviewModal({
 
                 {/* 5. Orientation Switch */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Page orientation</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Page orientation
+                  </label>
                   <div className="flex bg-black/40 border border-white/10 rounded-xl p-1 text-xs">
                     <button
                       id="orientation-portrait-btn"
                       type="button"
                       onClick={() => setOrientation("portrait")}
                       className={`flex-1 py-1.5 rounded-lg font-bold cursor-pointer transition-all ${
-                        orientation === "portrait" ? "bg-white/10 text-white shadow-sm border border-white/5" : "text-slate-400 hover:text-white"
+                        orientation === "portrait"
+                          ? "bg-white/10 text-white shadow-sm border border-white/5"
+                          : "text-slate-400 hover:text-white"
                       }`}
                     >
                       Portrait
@@ -342,7 +380,9 @@ export function EmployeePrintReviewModal({
                       type="button"
                       onClick={() => setOrientation("landscape")}
                       className={`flex-1 py-1.5 rounded-lg font-bold cursor-pointer transition-all ${
-                        orientation === "landscape" ? "bg-white/10 text-white shadow-sm border border-white/5" : "text-slate-400 hover:text-white"
+                        orientation === "landscape"
+                          ? "bg-white/10 text-white shadow-sm border border-white/5"
+                          : "text-slate-400 hover:text-white"
                       }`}
                     >
                       Landscape
@@ -352,7 +392,9 @@ export function EmployeePrintReviewModal({
 
                 {/* 6. Page Range Selector */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Custom page range</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Custom page range
+                  </label>
                   <input
                     id="page-range-input"
                     type="text"
@@ -365,14 +407,18 @@ export function EmployeePrintReviewModal({
 
                 {/* 7. Assigned Printer Selector */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Printer Destination</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Target Printer Destination
+                  </label>
                   <select
                     id="target-printer-select"
                     value={printerId}
                     onChange={(e) => setPrinterId(e.target.value)}
                     className="w-full h-9 bg-black/40 border border-white/10 rounded-lg px-3 text-xs text-white font-bold focus:outline-none focus:border-cyan-400/50 cursor-pointer"
                   >
-                    <option value="" className="bg-[#0b0b12]">Auto-Assign Online Printer</option>
+                    <option value="" className="bg-[#0b0b12]">
+                      Auto-Assign Online Printer
+                    </option>
                     {printers.map((p) => (
                       <option key={p.id} value={p.id} className="bg-[#0b0b12] text-white">
                         {p.name} ({p.status})
@@ -383,31 +429,47 @@ export function EmployeePrintReviewModal({
 
                 {/* 8. Print Quality Option */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Print output quality</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Print output quality
+                  </label>
                   <select
                     id="print-quality-select"
                     value={printQuality}
                     onChange={(e) => setPrintQuality(e.target.value)}
                     className="w-full h-9 bg-black/40 border border-white/10 rounded-lg px-3 text-xs text-white font-bold focus:outline-none focus:border-cyan-400/50 cursor-pointer"
                   >
-                    <option value="standard" className="bg-[#0b0b12] text-white">Standard quality</option>
-                    <option value="high" className="bg-[#0b0b12] text-white">High (HD Photo)</option>
-                    <option value="draft" className="bg-[#0b0b12] text-white">Draft / Economy mode</option>
+                    <option value="standard" className="bg-[#0b0b12] text-white">
+                      Standard quality
+                    </option>
+                    <option value="high" className="bg-[#0b0b12] text-white">
+                      High (HD Photo)
+                    </option>
+                    <option value="draft" className="bg-[#0b0b12] text-white">
+                      Draft / Economy mode
+                    </option>
                   </select>
                 </div>
 
                 {/* 9. Scaling Mode */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Scaling format</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Scaling format
+                  </label>
                   <select
                     id="scaling-select"
                     value={scaling}
                     onChange={(e) => setScaling(e.target.value)}
                     className="w-full h-9 bg-black/40 border border-white/10 rounded-lg px-3 text-xs text-white font-bold focus:outline-none focus:border-cyan-400/50 cursor-pointer"
                   >
-                    <option value="fit" className="bg-[#0b0b12] text-white">Fit Printable Area</option>
-                    <option value="actual" className="bg-[#0b0b12] text-white">Actual Size (100%)</option>
-                    <option value="shrink" className="bg-[#0b0b12] text-white">Shrink Oversized Only</option>
+                    <option value="fit" className="bg-[#0b0b12] text-white">
+                      Fit Printable Area
+                    </option>
+                    <option value="actual" className="bg-[#0b0b12] text-white">
+                      Actual Size (100%)
+                    </option>
+                    <option value="shrink" className="bg-[#0b0b12] text-white">
+                      Shrink Oversized Only
+                    </option>
                   </select>
                 </div>
 
@@ -420,20 +482,21 @@ export function EmployeePrintReviewModal({
                     onChange={(e) => setFitToPage(e.target.checked)}
                     className="size-4 rounded bg-black/40 border border-white/20 text-cyan-400 focus:ring-0 focus:ring-offset-0 focus:outline-none cursor-pointer"
                   />
-                  <label 
-                    htmlFor="fit-to-page-checkbox" 
+                  <label
+                    htmlFor="fit-to-page-checkbox"
                     className="text-xs font-bold text-slate-300 uppercase tracking-wider cursor-pointer select-none"
                   >
                     Auto-Fit printable page boundaries
                   </label>
                 </div>
-
               </div>
             </div>
 
             {/* Modifications Reason */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Modification Reason (Optional)</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                Modification Reason (Optional)
+              </label>
               <textarea
                 id="modification-reason-textarea"
                 value={reason}
@@ -450,7 +513,9 @@ export function EmployeePrintReviewModal({
                   <DollarSign className="size-5" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Recalculated Cost</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Recalculated Cost
+                  </span>
                   <span className="text-xl font-black text-cyan-300 mt-0.5 block">
                     ₹{newTotalCost.toFixed(2)}
                   </span>
@@ -485,7 +550,6 @@ export function EmployeePrintReviewModal({
               </div>
             </div>
           </form>
-
         </div>
       </div>
     </div>
