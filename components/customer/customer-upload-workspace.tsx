@@ -22,12 +22,23 @@ type UploadQueueItem = {
   status: "ready" | "validating" | "accepted" | "rejected";
   pages: number;
   rawFile?: File;
+  previewUrl?: string | null;
+  storageKey?: string | null;
 };
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function readFileAsDataUrl(file: File): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
 }
 
 export function CustomerUploadWorkspace({
@@ -69,6 +80,8 @@ export function CustomerUploadWorkspace({
       ].includes(file.type) || isDocx || isPptx;
 
       const pages = accepted ? await getDocumentPageCount(file) : 1;
+      const canPersistPreview = accepted && (file.type.startsWith("image/") || file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) && file.size <= 4 * 1024 * 1024;
+      const previewUrl = canPersistPreview ? await readFileAsDataUrl(file) : null;
 
       next.push({
         id: crypto.randomUUID(),
@@ -79,6 +92,8 @@ export function CustomerUploadWorkspace({
         status: accepted ? "accepted" : "rejected",
         pages,
         rawFile: file,
+        previewUrl,
+        storageKey: previewUrl,
       });
     }
 
@@ -257,7 +272,16 @@ export function CustomerUploadWorkspace({
                   formData.set("pageRange", pageRange);
                   formData.set("specialInstructions", specialInstructions);
                   formData.set("estimatedCost", String(subtotal));
-                  formData.set("fileHistory", queue.map((f) => f.name).join(", "));
+                  const acceptedFiles = queue.filter((f) => f.status === "accepted");
+                  formData.set("fileHistory", acceptedFiles.map((f) => f.name).join(", "));
+                  formData.set("filesJson", JSON.stringify(acceptedFiles.map((f) => ({
+                    fileName: f.name,
+                    fileSize: f.size,
+                    mimeType: f.type,
+                    pageCount: f.pages,
+                    previewUrl: f.previewUrl,
+                    storageKey: f.storageKey,
+                  }))));
                   await createAction(formData);
                 } catch (error: any) {
                   if (error.message === 'NEXT_REDIRECT' || error?.digest?.startsWith('NEXT_REDIRECT')) {
@@ -482,6 +506,7 @@ export function CustomerUploadWorkspace({
 
                 <input type="hidden" name="pageCount" value={totalPages} />
                 <input type="hidden" name="estimatedCost" value={subtotal.toFixed(2)} />
+                <input type="hidden" name="filesJson" value="[]" />
 
                 <div className="pt-2">
                   <p className="text-[10px] text-muted-foreground leading-relaxed">

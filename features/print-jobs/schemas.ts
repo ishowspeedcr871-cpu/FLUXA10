@@ -33,7 +33,9 @@ export const createPrintJobSchema = customerUploadConfigurationSchema.extend({
     fileName: z.string().min(1),
     fileSize: z.number().int().positive(),
     mimeType: z.string().min(1),
-    pageCount: z.number().int().positive().optional()
+    pageCount: z.number().int().positive().optional(),
+    previewUrl: z.string().optional().nullable(),
+    storageKey: z.string().optional().nullable()
   })).optional()
 });
 
