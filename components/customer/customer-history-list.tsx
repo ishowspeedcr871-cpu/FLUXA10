@@ -1,15 +1,15 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { 
-  Search, 
-  Filter, 
-  Calendar, 
-  FileText, 
+import {
+  Search,
+  Filter,
+  Calendar,
+  FileText,
   ExternalLink,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -40,9 +40,10 @@ export function CustomerHistoryList({ jobs }: CustomerHistoryListProps) {
 
   const filteredJobs = useMemo(() => {
     return jobs.filter((job) => {
-      const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          job.id.toLowerCase().includes(searchQuery.toLowerCase());
-      
+      const matchesSearch =
+        job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.id.toLowerCase().includes(searchQuery.toLowerCase());
+
       const s = job.status.toUpperCase();
       const isActive = !["COMPLETED", "COLLECTED", "CANCELLED", "FAILED"].includes(s);
       const isCompleted = ["COMPLETED", "COLLECTED"].includes(s);
@@ -63,7 +64,7 @@ export function CustomerHistoryList({ jobs }: CustomerHistoryListProps) {
   };
 
   const renderOtpDigits = (otp: string) => {
-    const digits = otp ? otp.replace(/\s/g, "").substring(0, 6).split("") : ["-", "-", "-", "-", "-", "-"];
+    const digits = otp ? otp.replace(/\s/g, "").substring(0, 4).split("") : ["-", "-", "-", "-"];
     return (
       <div className="flex gap-1">
         {digits.map((digit, i) => (
@@ -84,19 +85,21 @@ export function CustomerHistoryList({ jobs }: CustomerHistoryListProps) {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search orders by name or ID..." 
+          <Input
+            placeholder="Search orders by name or ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 h-11 rounded-2xl border-white/10 bg-[#0c0c11] text-white text-sm"
           />
         </div>
-        
+
         <div className="flex gap-2 bg-white/5 border border-white/10 rounded-2xl p-1">
           <button
             onClick={() => setFilterStatus("all")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              filterStatus === "all" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white"
+              filterStatus === "all"
+                ? "bg-white/10 text-white"
+                : "text-muted-foreground hover:text-white"
             }`}
           >
             All
@@ -104,7 +107,9 @@ export function CustomerHistoryList({ jobs }: CustomerHistoryListProps) {
           <button
             onClick={() => setFilterStatus("active")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              filterStatus === "active" ? "bg-accent-cyan/20 text-accent-cyan" : "text-muted-foreground hover:text-white"
+              filterStatus === "active"
+                ? "bg-accent-cyan/20 text-accent-cyan"
+                : "text-muted-foreground hover:text-white"
             }`}
           >
             Active
@@ -112,7 +117,9 @@ export function CustomerHistoryList({ jobs }: CustomerHistoryListProps) {
           <button
             onClick={() => setFilterStatus("completed")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              filterStatus === "completed" ? "bg-emerald-500/20 text-emerald-400" : "text-muted-foreground hover:text-white"
+              filterStatus === "completed"
+                ? "bg-emerald-500/20 text-emerald-400"
+                : "text-muted-foreground hover:text-white"
             }`}
           >
             Completed
@@ -126,10 +133,18 @@ export function CustomerHistoryList({ jobs }: CustomerHistoryListProps) {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/5 bg-white/[0.02]">
-                <th className="px-6 py-4 text-[10px] font-bold text-accent-cyan uppercase tracking-widest">Job Details</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-accent-cyan uppercase tracking-widest">Status</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-accent-cyan uppercase tracking-widest text-center">Security OTP</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-accent-cyan uppercase tracking-widest text-right">Cost</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-accent-cyan uppercase tracking-widest">
+                  Job Details
+                </th>
+                <th className="px-6 py-4 text-[10px] font-bold text-accent-cyan uppercase tracking-widest">
+                  Status
+                </th>
+                <th className="px-6 py-4 text-[10px] font-bold text-accent-cyan uppercase tracking-widest text-center">
+                  Security OTP
+                </th>
+                <th className="px-6 py-4 text-[10px] font-bold text-accent-cyan uppercase tracking-widest text-right">
+                  Cost
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -138,7 +153,7 @@ export function CustomerHistoryList({ jobs }: CustomerHistoryListProps) {
                   const s = job.status.toUpperCase();
                   const isCompleted = ["COMPLETED", "COLLECTED"].includes(s);
                   const isFailed = ["CANCELLED", "FAILED"].includes(s);
-                  
+
                   return (
                     <tr key={job.id} className="hover:bg-white/[0.02] transition-colors group">
                       <td className="px-6 py-5">
@@ -165,13 +180,21 @@ export function CustomerHistoryList({ jobs }: CustomerHistoryListProps) {
                           ) : (
                             <Clock className="size-3.5 text-amber-400 animate-pulse" />
                           )}
-                          <span className={`text-[11px] font-bold uppercase tracking-wider ${
-                            isCompleted ? "text-emerald-400" : isFailed ? "text-rose-400" : "text-amber-400"
-                          }`}>
+                          <span
+                            className={`text-[11px] font-bold uppercase tracking-wider ${
+                              isCompleted
+                                ? "text-emerald-400"
+                                : isFailed
+                                  ? "text-rose-400"
+                                  : "text-amber-400"
+                            }`}
+                          >
                             {job.status.replaceAll("_", " ")}
                           </span>
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{job.shopName || "Apex Digital"}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {job.shopName || "Apex Digital"}
+                        </p>
                       </td>
                       <td className="px-6 py-5">
                         <div className="flex justify-center">
@@ -179,8 +202,12 @@ export function CustomerHistoryList({ jobs }: CustomerHistoryListProps) {
                         </div>
                       </td>
                       <td className="px-6 py-5 text-right">
-                        <p className="text-sm font-bold text-white">₹{job.estimatedCost.toFixed(2)}</p>
-                        <p className="text-[10px] text-muted-foreground">{job.copies} {job.copies > 1 ? 'copies' : 'copy'}</p>
+                        <p className="text-sm font-bold text-white">
+                          ₹{job.estimatedCost.toFixed(2)}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {job.copies} {job.copies > 1 ? "copies" : "copy"}
+                        </p>
                       </td>
                     </tr>
                   );
@@ -191,7 +218,9 @@ export function CustomerHistoryList({ jobs }: CustomerHistoryListProps) {
                     <div className="flex flex-col items-center gap-2 opacity-50">
                       <FileText className="size-10 text-muted-foreground" />
                       <p className="text-sm font-medium text-white">No print jobs found</p>
-                      <p className="text-xs text-muted-foreground">Your history will appear here once you place orders.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Your history will appear here once you place orders.
+                      </p>
                     </div>
                   </td>
                 </tr>

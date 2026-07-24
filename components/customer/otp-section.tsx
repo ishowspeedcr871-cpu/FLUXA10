@@ -13,7 +13,13 @@ interface OtpSectionProps {
   generateAction: (formData: FormData) => Promise<void>;
 }
 
-export function OtpSection({ jobId, isCompleted, initialOtp, otpHistory, generateAction }: OtpSectionProps) {
+export function OtpSection({
+  jobId,
+  isCompleted,
+  initialOtp,
+  otpHistory,
+  generateAction,
+}: OtpSectionProps) {
   const [otp, setOtp] = useState(initialOtp || "");
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -58,12 +64,13 @@ export function OtpSection({ jobId, isCompleted, initialOtp, otpHistory, generat
         <div className="space-y-2">
           <h3 className="text-xl font-bold text-white">Secure Print Release</h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            Generate a secure 6-digit release OTP. Share this OTP with the print operator or enter it at the physical release kiosk to print your documents safely.
+            Generate a secure 4-digit release OTP. Share this OTP with the print operator or enter
+            it at the physical release kiosk to print your documents safely.
           </p>
         </div>
 
         {otp ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="p-6 rounded-[2rem] border border-accent-cyan/30 bg-accent-cyan/5 space-y-4"
@@ -85,29 +92,34 @@ export function OtpSection({ jobId, isCompleted, initialOtp, otpHistory, generat
               Valid for 15 minutes. Show this to release prints.
             </p>
             <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-              <motion.div 
+              <motion.div
                 initial={{ width: "100%" }}
                 animate={{ width: "0%" }}
                 transition={{ duration: 900, ease: "linear" }}
-                className="h-full bg-accent-cyan" 
+                className="h-full bg-accent-cyan"
               />
             </div>
           </motion.div>
         ) : (
-          <form action={async (formData) => {
-            setIsGenerating(true);
-            try {
-              await generateAction(formData);
-            } catch (error: any) {
-              if (error.message === 'NEXT_REDIRECT' || error?.digest?.startsWith('NEXT_REDIRECT')) {
-                return;
+          <form
+            action={async (formData) => {
+              setIsGenerating(true);
+              try {
+                await generateAction(formData);
+              } catch (error: any) {
+                if (
+                  error.message === "NEXT_REDIRECT" ||
+                  error?.digest?.startsWith("NEXT_REDIRECT")
+                ) {
+                  return;
+                }
+                console.error("OTP generation error:", error);
+                alert("Failed to generate OTP. Please try again.");
+              } finally {
+                setIsGenerating(false);
               }
-              console.error("OTP generation error:", error);
-              alert("Failed to generate OTP. Please try again.");
-            } finally {
-              setIsGenerating(false);
-            }
-          }}>
+            }}
+          >
             <input type="hidden" name="jobId" value={jobId} />
             <button
               type="submit"
@@ -132,9 +144,17 @@ export function OtpSection({ jobId, isCompleted, initialOtp, otpHistory, generat
               Recent OTPs
             </p>
             {otpHistory?.slice(0, 1)?.map((hist) => (
-              <div key={hist.id} className="flex justify-between items-center text-xs text-muted-foreground bg-white/[0.01] border border-white/5 p-2 rounded-xl">
+              <div
+                key={hist.id}
+                className="flex justify-between items-center text-xs text-muted-foreground bg-white/[0.01] border border-white/5 p-2 rounded-xl"
+              >
                 <span>Status: {hist.status}</span>
-                <span>{new Date(hist.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                <span>
+                  {new Date(hist.expiresAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
               </div>
             ))}
           </div>

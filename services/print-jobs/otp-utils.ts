@@ -1,7 +1,7 @@
 import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 
 export const OTP_TTL_MINUTES = 15;
-export const OTP_DIGITS = 6;
+export const OTP_DIGITS = 4;
 
 export function getOtpSecret() {
   const secret = process.env.AUTH_SECRET;

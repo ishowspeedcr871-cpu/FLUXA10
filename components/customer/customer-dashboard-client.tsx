@@ -17,7 +17,7 @@ import {
   FileCheck2,
   Printer,
   ChevronRight,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -84,10 +84,12 @@ export function CustomerDashboardClient({
   orgSettings,
 }: CustomerDashboardClientProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Staged files local state
   const [stagedFiles, setStagedFiles] = useState<UploadedFile[]>([]);
-  const [selectedJobFilter, setSelectedJobFilter] = useState<"active" | "completed" | "history">(initialFilter);
+  const [selectedJobFilter, setSelectedJobFilter] = useState<"active" | "completed" | "history">(
+    initialFilter,
+  );
 
   // Conversion simulation states
   const [isConverting, setIsConverting] = useState(false);
@@ -114,7 +116,7 @@ export function CustomerDashboardClient({
   const [popupOtpCode, setPopupOtpCode] = useState("");
   const [popupJobId, setPopupJobId] = useState("");
   const [popupFileName, setPopupFileName] = useState("");
-  const [popupCost, setPopupCost] = useState(40.00);
+  const [popupCost, setPopupCost] = useState(40.0);
   const [popupSettings, setPopupSettings] = useState("A4, Color, 2 Copies");
 
   // Local state to track newly added jobs dynamically
@@ -127,12 +129,14 @@ export function CustomerDashboardClient({
 
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    
+
     const incomingFiles = Array.from(files);
     const file = incomingFiles[0];
-    
+
     // Start Conversion Flow
-    setConvertingFileName(incomingFiles.length > 1 ? `${incomingFiles.length} files selected` : file.name);
+    setConvertingFileName(
+      incomingFiles.length > 1 ? `${incomingFiles.length} files selected` : file.name,
+    );
     setIsConverting(true);
     setConversionProgress(0);
     setConversionMessage("Uploading raw files to print network...");
@@ -144,7 +148,7 @@ export function CustomerDashboardClient({
       "Converting document contents into print-optimized PDF...",
       "Flattening transparent layers & embedded images...",
       "Applying print margins & anti-aliasing...",
-      "Documents successfully converted and ready for configuration!"
+      "Documents successfully converted and ready for configuration!",
     ];
 
     let progress = 0;
@@ -153,16 +157,20 @@ export function CustomerDashboardClient({
       if (progress >= 100) {
         progress = 100;
         clearInterval(interval);
-        
+
         // Complete conversion with actual page count extraction
         try {
           const newFiles: UploadedFile[] = [];
           for (const f of incomingFiles) {
             const pdfName = f.name.replace(/\.[^/.]+$/, "") + ".pdf";
             const actualPages = await getDocumentPageCount(f);
-            const canPersistPreview = (f.type.startsWith("image/") || f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) && f.size <= 4 * 1024 * 1024;
+            const canPersistPreview =
+              (f.type.startsWith("image/") ||
+                f.type === "application/pdf" ||
+                f.name.toLowerCase().endsWith(".pdf")) &&
+              f.size <= 4 * 1024 * 1024;
             const previewUrl = canPersistPreview ? await readFileAsDataUrl(f) : null;
-            
+
             newFiles.push({
               id: crypto.randomUUID(),
               name: pdfName,
@@ -180,7 +188,11 @@ export function CustomerDashboardClient({
           setIsConverting(false);
           setStagedFiles((prev) => [...prev, ...newFiles]);
           if (!orderName && newFiles.length > 0) {
-            setOrderName(incomingFiles.length > 1 ? `Batch Order (${incomingFiles.length} files)` : incomingFiles[0].name.replace(/\.[^/.]+$/, ""));
+            setOrderName(
+              incomingFiles.length > 1
+                ? `Batch Order (${incomingFiles.length} files)`
+                : incomingFiles[0].name.replace(/\.[^/.]+$/, ""),
+            );
           }
           setShowSettings(true);
         } catch (err) {
@@ -190,10 +202,10 @@ export function CustomerDashboardClient({
       }
 
       setConversionProgress(progress);
-      
+
       const msgIndex = Math.min(
         Math.floor((progress / 100) * messages.length),
-        messages.length - 1
+        messages.length - 1,
       );
       setConversionMessage(messages[msgIndex]);
     }, 50);
@@ -218,8 +230,8 @@ export function CustomerDashboardClient({
 
   // OTP representation: helper to split code into glowing boxes
   const renderOtpDigits = (otp: string) => {
-    const digits = otp ? otp.replace(/\s/g, "").substring(0, 6).split("") : ["7", "3", "4", "9", "0", "1"];
-    while (digits.length < 6) digits.push("0");
+    const digits = otp ? otp.replace(/\s/g, "").substring(0, 4).split("") : ["7", "3", "4", "9"];
+    while (digits.length < 4) digits.push("0");
     return (
       <div className="flex gap-1 ml-1 select-all">
         {digits.map((digit, i) => (
@@ -250,7 +262,11 @@ export function CustomerDashboardClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: orderName || (stagedFiles.length === 1 ? stagedFiles[0].name.replace(".pdf", "") : `Batch Order (${stagedFiles.length})`),
+          title:
+            orderName ||
+            (stagedFiles.length === 1
+              ? stagedFiles[0].name.replace(".pdf", "")
+              : `Batch Order (${stagedFiles.length})`),
           copies,
           color: colorMode,
           duplex: duplexMode,
@@ -260,15 +276,15 @@ export function CustomerDashboardClient({
           specialInstructions,
           pageCount: totalPages,
           estimatedCost: grandTotalCost,
-          fileHistory: stagedFiles.map(f => f.name).join(", "),
-          files: stagedFiles.map(f => ({
+          fileHistory: stagedFiles.map((f) => f.name).join(", "),
+          files: stagedFiles.map((f) => ({
             fileName: f.name,
             fileSize: f.size,
             mimeType: f.type,
             pageCount: f.pages,
             previewUrl: f.previewUrl,
-            storageKey: f.storageKey
-          }))
+            storageKey: f.storageKey,
+          })),
         }),
       });
 
@@ -277,9 +293,11 @@ export function CustomerDashboardClient({
         // Capture data for the gorgeous modal
         setPopupOtpCode(data.job.otpCode);
         setPopupJobId(data.job.id.substring(0, 8).toUpperCase());
-        setPopupFileName(stagedFiles.length === 1 ? stagedFiles[0].name : `${stagedFiles.length} files`);
+        setPopupFileName(
+          stagedFiles.length === 1 ? stagedFiles[0].name : `${stagedFiles.length} files`,
+        );
         setPopupCost(data.job.estimatedCost);
-        
+
         const modeLabel = colorMode ? "Color" : "B/W";
         setPopupSettings(`${paperSize}, ${modeLabel}, ${copies} Copies`);
 
@@ -288,7 +306,7 @@ export function CustomerDashboardClient({
 
         // Prepend new job to local tracker list
         setLocalJobs((prev) => [data.job, ...prev]);
-        
+
         // Clear staged files after successful order
         setStagedFiles([]);
         setShowSettings(false);
@@ -337,11 +355,9 @@ export function CustomerDashboardClient({
 
   return (
     <div className="space-y-5">
-      
       {/* 1. UPLOAD DOCUMENTS GRADIENT BORDER NEON CARD */}
       <div className="rounded-[30px] p-[1.5px] bg-gradient-to-br from-accent-cyan via-accent-cyan/40 to-accent-magenta/90 shadow-[0_4px_30px_rgba(184,100,70,0.15)] relative overflow-hidden">
         <div className="rounded-[29px] bg-[#0c0c11]/95 backdrop-blur-md p-6 flex flex-col items-center text-center relative overflow-hidden">
-          
           {/* Subtle tech background lines */}
           <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:14px_24px]" />
 
@@ -369,7 +385,9 @@ export function CustomerDashboardClient({
                   <User className="size-3.5" />
                   <span>Login to Order</span>
                 </Link>
-                <span className="text-[10px] text-amber-500/80 font-medium">Authentication required to submit printing jobs</span>
+                <span className="text-[10px] text-amber-500/80 font-medium">
+                  Authentication required to submit printing jobs
+                </span>
               </div>
             )}
           </div>
@@ -388,7 +406,7 @@ export function CustomerDashboardClient({
                 <div className="relative size-24 flex items-center justify-center">
                   {/* Glowing background circles */}
                   <div className="absolute inset-0 rounded-full bg-accent-cyan/10 blur-md animate-pulse" />
-                  
+
                   {/* Outer spinning progress ring */}
                   <svg className="absolute size-24 transform -rotate-90">
                     <circle
@@ -433,7 +451,10 @@ export function CustomerDashboardClient({
                     <span>Converting...</span>
                     <span>{conversionProgress}%</span>
                   </div>
-                  <Progress value={conversionProgress} className="h-1.5 bg-white/5 w-full max-w-[200px] mx-auto" />
+                  <Progress
+                    value={conversionProgress}
+                    className="h-1.5 bg-white/5 w-full max-w-[200px] mx-auto"
+                  />
                 </div>
 
                 <p className="text-xs text-muted-foreground/90 font-sans italic min-h-[32px] text-center max-w-sm px-2 transition-all duration-300">
@@ -452,7 +473,7 @@ export function CustomerDashboardClient({
               >
                 {/* Ambient Outer Ring Pulsing */}
                 <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-accent-cyan/20 to-accent-magenta/10 blur-md group-hover:scale-105 transition-transform duration-500" />
-                
+
                 {/* Main Circle Glassmorphic Body */}
                 <div className="absolute inset-2 rounded-full border border-white/15 bg-gradient-to-b from-white/[0.08] to-white/[0.01] shadow-[inset_0_4px_12px_rgba(255,255,255,0.15)] flex flex-col items-center justify-center transition-all duration-300 group-hover:border-accent-cyan/40">
                   {/* Dynamic Inner Glow Circle */}
@@ -468,9 +489,7 @@ export function CustomerDashboardClient({
           </AnimatePresence>
 
           {/* Formats info */}
-          <p className="text-[13px] font-bold text-white mt-5">
-            PDF, Word, PowerPoint, or Images.
-          </p>
+          <p className="text-[13px] font-bold text-white mt-5">PDF, Word, PowerPoint, or Images.</p>
           <p className="text-[10px] text-muted-foreground/60 mt-1">
             Converted files are secure, high-contrast, and rasterized to PDF.
           </p>
@@ -487,13 +506,17 @@ export function CustomerDashboardClient({
 
           {/* 2. WHATSAPP CAPSULE GREEN BUTTON */}
           <a
-            href={whatsappNumber ? `https://wa.me/${whatsappNumber.replace(/\D/g, "")}` : "https://wa.me/919999999999"}
+            href={
+              whatsappNumber
+                ? `https://wa.me/${whatsappNumber.replace(/\D/g, "")}`
+                : "https://wa.me/919999999999"
+            }
             target="_blank"
             rel="noopener noreferrer"
             className="mt-6 w-full flex items-center justify-center gap-2 py-3 px-6 rounded-full border border-[#25D366]/40 bg-[#128C7E]/10 hover:bg-[#128C7E]/20 text-[#25D366] text-xs font-bold tracking-wide transition-all duration-300 group shadow-[0_2px_12px_rgba(37,211,102,0.05)]"
           >
             <svg className="size-4 fill-current shrink-0" viewBox="0 0 24 24">
-              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.864.001-2.641-1.025-5.125-2.89-6.995C16.58 1.88 14.102.85 11.465.85 6.027.85 1.602 5.263 1.6 10.704c-.001 1.708.452 3.376 1.312 4.85l-.995 3.633 3.73-.977zm11.368-6.19c-.312-.156-1.85-.912-2.131-1.013-.282-.102-.487-.153-.691.153-.204.307-.791.992-.97 1.196-.179.205-.358.23-.67.074-.312-.156-1.318-.486-2.51-1.548-.928-.827-1.554-1.849-1.736-2.155-.18-.307-.018-.472.138-.627.14-.139.312-.361.468-.542.156-.181.208-.307.312-.511.104-.205.052-.384-.026-.54-.078-.157-.691-1.666-.947-2.28-.249-.598-.503-.517-.69-.526-.179-.009-.384-.01-.59-.01-.205 0-.54.077-.822.384-.282.307-1.077 1.053-1.077 2.569s1.102 2.984 1.256 3.19c.154.205 2.169 3.311 5.256 4.643.734.316 1.307.505 1.753.647.739.235 1.412.202 1.944.123.593-.088 1.85-.756 2.112-1.448.262-.693.262-1.288.184-1.412-.078-.125-.282-.201-.594-.358z"/>
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.864.001-2.641-1.025-5.125-2.89-6.995C16.58 1.88 14.102.85 11.465.85 6.027.85 1.602 5.263 1.6 10.704c-.001 1.708.452 3.376 1.312 4.85l-.995 3.633 3.73-.977zm11.368-6.19c-.312-.156-1.85-.912-2.131-1.013-.282-.102-.487-.153-.691.153-.204.307-.791.992-.97 1.196-.179.205-.358.23-.67.074-.312-.156-1.318-.486-2.51-1.548-.928-.827-1.554-1.849-1.736-2.155-.18-.307-.018-.472.138-.627.14-.139.312-.361.468-.542.156-.181.208-.307.312-.511.104-.205.052-.384-.026-.54-.078-.157-.691-1.666-.947-2.28-.249-.598-.503-.517-.69-.526-.179-.009-.384-.01-.59-.01-.205 0-.54.077-.822.384-.282.307-1.077 1.053-1.077 2.569s1.102 2.984 1.256 3.19c.154.205 2.169 3.311 5.256 4.643.734.316 1.307.505 1.753.647.739.235 1.412.202 1.944.123.593-.088 1.85-.756 2.112-1.448.262-.693.262-1.288.184-1.412-.078-.125-.282-.201-.594-.358z" />
             </svg>
             <span>Forward from WhatsApp to Fluxa</span>
           </a>
@@ -520,7 +543,6 @@ export function CustomerDashboardClient({
               <span>Refresh Scan</span>
             </button>
           </div>
-
         </div>
       </div>
 
@@ -534,7 +556,7 @@ export function CustomerDashboardClient({
           >
             <PdfPreviewGallery
               files={stagedFiles}
-              onDeleteFile={(id) => setStagedFiles(prev => prev.filter(f => f.id !== id))}
+              onDeleteFile={(id) => setStagedFiles((prev) => prev.filter((f) => f.id !== id))}
               onReplaceFile={(e) => handleFileUpload(e.target.files)}
               activeFileIndex={activeFileIndex}
               onSelectFile={setActiveFileIndex}
@@ -655,9 +677,15 @@ export function CustomerDashboardClient({
                     onChange={(e) => setPaperSize(e.target.value)}
                     className="w-full h-10 bg-black/40 border border-white/15 text-white text-xs rounded-xl px-2.5 outline-none focus:border-accent-cyan"
                   >
-                    <option value="A4" className="bg-[#121218]">A4 Standard</option>
-                    <option value="Letter" className="bg-[#121218]">Letter Size</option>
-                    <option value="Legal" className="bg-[#121218]">Legal Size</option>
+                    <option value="A4" className="bg-[#121218]">
+                      A4 Standard
+                    </option>
+                    <option value="Letter" className="bg-[#121218]">
+                      Letter Size
+                    </option>
+                    <option value="Legal" className="bg-[#121218]">
+                      Legal Size
+                    </option>
                   </select>
                 </div>
 
@@ -671,8 +699,12 @@ export function CustomerDashboardClient({
                     onChange={(e) => setDuplexMode(e.target.value === "double")}
                     className="w-full h-10 bg-black/40 border border-white/15 text-white text-xs rounded-xl px-2.5 outline-none focus:border-accent-cyan"
                   >
-                    <option value="double" className="bg-[#121218]">Double-Sided (Duplex)</option>
-                    <option value="single" className="bg-[#121218]">Single-Sided</option>
+                    <option value="double" className="bg-[#121218]">
+                      Double-Sided (Duplex)
+                    </option>
+                    <option value="single" className="bg-[#121218]">
+                      Single-Sided
+                    </option>
                   </select>
                 </div>
 
@@ -686,8 +718,12 @@ export function CustomerDashboardClient({
                     onChange={(e) => setOrientation(e.target.value as any)}
                     className="w-full h-10 bg-black/40 border border-white/15 text-white text-xs rounded-xl px-2.5 outline-none focus:border-accent-cyan"
                   >
-                    <option value="portrait" className="bg-[#121218]">Vertical (Portrait)</option>
-                    <option value="landscape" className="bg-[#121218]">Horizontal (Landscape)</option>
+                    <option value="portrait" className="bg-[#121218]">
+                      Vertical (Portrait)
+                    </option>
+                    <option value="landscape" className="bg-[#121218]">
+                      Horizontal (Landscape)
+                    </option>
                   </select>
                 </div>
 
@@ -733,7 +769,11 @@ export function CustomerDashboardClient({
                 <div className="space-y-1.5 font-mono text-xs text-muted-foreground">
                   <div className="flex justify-between">
                     <span>Print Mode:</span>
-                    <span className="text-white font-medium">{colorMode ? `Color (${formatPrice(10, orgSettings)}/pg)` : `B/W (${formatPrice(2, orgSettings)}/pg)`}</span>
+                    <span className="text-white font-medium">
+                      {colorMode
+                        ? `Color (${formatPrice(10, orgSettings)}/pg)`
+                        : `B/W (${formatPrice(2, orgSettings)}/pg)`}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Total Pages:</span>
@@ -745,11 +785,15 @@ export function CustomerDashboardClient({
                   </div>
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span className="text-white font-medium">{formatPrice(activeSubtotal, orgSettings)}</span>
+                    <span className="text-white font-medium">
+                      {formatPrice(activeSubtotal, orgSettings)}
+                    </span>
                   </div>
                   <div className="border-t border-dashed border-white/10 my-2 pt-2 flex justify-between text-sm font-bold text-white font-sans">
                     <span>Grand Total:</span>
-                    <span className="text-accent-cyan text-base">{formatPrice(grandTotalCost, orgSettings)}</span>
+                    <span className="text-accent-cyan text-base">
+                      {formatPrice(grandTotalCost, orgSettings)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -794,9 +838,7 @@ export function CustomerDashboardClient({
 
       {/* 4. RECENT JOBS TRACKING SECTION */}
       <div className="rounded-[22px] border border-white/10 bg-[#0c0c11] p-5 space-y-4">
-        <h3 className="text-[17px] font-extrabold text-white tracking-tight">
-          Recent Jobs
-        </h3>
+        <h3 className="text-[17px] font-extrabold text-white tracking-tight">Recent Jobs</h3>
 
         {/* Filter Capsule Tabs exactly styled to mockup */}
         <div className="flex gap-2 bg-white/5 border border-white/10 rounded-full p-[3px]">
@@ -836,19 +878,23 @@ export function CustomerDashboardClient({
         <div className="space-y-4">
           {displayedJobs.map((job) => {
             const cleanStatus = job.status.replaceAll("_", " ");
-            const displayId = job.id.startsWith("mock-") ? "FLX-8821" : job.id.substring(0, 8).toUpperCase();
-            
+            const displayId = job.id.startsWith("mock-")
+              ? "FLX-8821"
+              : job.id.substring(0, 8).toUpperCase();
+
             return (
               <div
                 key={job.id}
                 className="pt-2 pb-1 border-b border-white/5 last:border-b-0 last:pb-0"
               >
                 <div className="flex flex-col gap-2.5">
-                  
                   {/* Job ID & Status Line */}
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-mono text-white/50 tracking-wide">
-                      Job ID: <span className="text-white font-bold hover:text-accent-cyan underline underline-offset-2">#{displayId}</span>
+                      Job ID:{" "}
+                      <span className="text-white font-bold hover:text-accent-cyan underline underline-offset-2">
+                        #{displayId}
+                      </span>
                     </span>
                     <span className="font-sans font-extrabold text-white text-[12px] flex items-center gap-1.5">
                       Status: <span className="text-[#fbbf24] font-semibold">{cleanStatus}</span>
@@ -858,8 +904,12 @@ export function CustomerDashboardClient({
                   {/* Shop Location & OTP Blocks Row */}
                   <div className="flex justify-between items-center">
                     <div className="text-xs">
-                      <span className="text-white/40 block text-[10px] uppercase font-bold tracking-wider">Printer Shop:</span>
-                      <span className="text-white font-semibold">{job.shopName || "Apex Digital"}</span>
+                      <span className="text-white/40 block text-[10px] uppercase font-bold tracking-wider">
+                        Printer Shop:
+                      </span>
+                      <span className="text-white font-semibold">
+                        {job.shopName || "Apex Digital"}
+                      </span>
                     </div>
 
                     {/* Highly Styled OTP Display exactly matching image spec (glow magenta box) */}
@@ -867,10 +917,9 @@ export function CustomerDashboardClient({
                       <span className="text-[11px] font-extrabold tracking-widest text-[#a236a5]/80 uppercase mr-1.5">
                         OTP:
                       </span>
-                      {renderOtpDigits(job.otpCode || "734901")}
+                      {renderOtpDigits(job.otpCode || "7349")}
                     </div>
                   </div>
-
                 </div>
               </div>
             );
@@ -900,15 +949,18 @@ export function CustomerDashboardClient({
               exit={{ scale: 0.9, y: 15 }}
               className="relative w-full max-w-xl bg-[#0c0c11]/95 border border-white/10 rounded-[30px] p-6 sm:p-10 shadow-2xl flex flex-col space-y-6"
             >
-              
               {/* Header: FLUXA Logo on left, Welcome back on right */}
               <div className="flex items-start justify-between border-b border-white/5 pb-5">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xl font-black tracking-widest text-white">FLUXA</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[11px] text-muted-foreground/80 block leading-tight">Welcome back,</span>
-                  <span className="text-[13px] font-bold text-white tracking-wide">Apex Digital Print Solutions!</span>
+                  <span className="text-[11px] text-muted-foreground/80 block leading-tight">
+                    Welcome back,
+                  </span>
+                  <span className="text-[13px] font-bold text-white tracking-wide">
+                    Apex Digital Print Solutions!
+                  </span>
                 </div>
               </div>
 
@@ -930,12 +982,16 @@ export function CustomerDashboardClient({
                   <span className="text-3xl font-extrabold tracking-widest text-accent-magenta uppercase text-[26px]">
                     OTP:
                   </span>
-                  
-                    {/* Separate Blocks matching image */}
-                    <div className="flex items-center gap-2">
-                      {/* First 3 Blocks */}
-                      <div className="flex gap-1.5">
-                        {popupOtpCode.padEnd(6, "0").substring(0, 3).split("").map((char, i) => (
+
+                  {/* Separate Blocks matching image */}
+                  <div className="flex items-center gap-2">
+                    {/* First 3 Blocks */}
+                    <div className="flex gap-1.5">
+                      {popupOtpCode
+                        .padEnd(6, "0")
+                        .substring(0, 3)
+                        .split("")
+                        .map((char, i) => (
                           <div
                             key={i}
                             className="flex items-center justify-center size-11 sm:size-12 rounded-xl bg-[#2e1065] border border-[#d946ef]/45 text-[#f472b6] font-mono text-xl sm:text-2xl font-black shadow-[0_0_15px_rgba(217,70,239,0.35)] relative overflow-hidden"
@@ -944,24 +1000,28 @@ export function CustomerDashboardClient({
                             <span className="relative z-10">{char}</span>
                           </div>
                         ))}
-                      </div>
-
-                      {/* Gap */}
-                      <div className="w-1.5" />
-
-                      {/* Next 3 Blocks */}
-                      <div className="flex gap-1.5">
-                        {popupOtpCode.padEnd(6, "0").substring(3, 6).split("").map((char, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center justify-center size-11 sm:size-12 rounded-xl bg-[#2e1065] border border-[#d946ef]/45 text-[#f472b6] font-mono text-xl sm:text-2xl font-black shadow-[0_0_15px_rgba(217,70,239,0.35)] relative overflow-hidden"
-                          >
-                            <div className="absolute left-0 right-0 top-1/2 h-[1px] bg-black/40" />
-                            <span className="relative z-10">{char}</span>
-                          </div>
-                        ))}
-                      </div>
                     </div>
+
+                    {/* Gap */}
+                    <div className="w-1.5" />
+
+                    {/* Next 3 Blocks */}
+                    <div className="flex gap-1.5">
+                      {popupOtpCode
+                        .padEnd(6, "0")
+                        .substring(3, 6)
+                        .split("")
+                        .map((char, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center justify-center size-11 sm:size-12 rounded-xl bg-[#2e1065] border border-[#d946ef]/45 text-[#f472b6] font-mono text-xl sm:text-2xl font-black shadow-[0_0_15px_rgba(217,70,239,0.35)] relative overflow-hidden"
+                          >
+                            <div className="absolute left-0 right-0 top-1/2 h-[1px] bg-black/40" />
+                            <span className="relative z-10">{char}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
                 </div>
 
                 <p className="text-center text-[11px] text-muted-foreground/80 tracking-wide max-w-sm mx-auto">
@@ -977,7 +1037,6 @@ export function CustomerDashboardClient({
 
                   {/* Four Steps with exactly corresponding layout and checks */}
                   <div className="relative flex justify-between text-center">
-                    
                     {/* Step 1 */}
                     <div className="flex flex-col items-center space-y-1.5 flex-1">
                       <div className="size-[22px] rounded-full bg-[#06b6d4] text-black flex items-center justify-center shadow-[0_0_8px_rgba(6,182,212,0.4)]">
@@ -1017,32 +1076,41 @@ export function CustomerDashboardClient({
                         Print Job Completed
                       </span>
                     </div>
-
                   </div>
                 </div>
 
                 {/* Specifications List Details Area */}
                 <div className="rounded-[18px] border border-white/5 bg-black/40 p-4 font-sans text-[12px] space-y-2.5">
                   <div className="flex justify-between items-center">
-                    <span className="text-white/40 block text-[10px] uppercase font-bold tracking-wider">Job ID</span>
+                    <span className="text-white/40 block text-[10px] uppercase font-bold tracking-wider">
+                      Job ID
+                    </span>
                     <span className="text-white font-mono font-bold">#{popupJobId}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-white/40 block text-[10px] uppercase font-bold tracking-wider">Document</span>
-                    <span className="text-white font-semibold truncate max-w-[220px]">{popupFileName}</span>
+                    <span className="text-white/40 block text-[10px] uppercase font-bold tracking-wider">
+                      Document
+                    </span>
+                    <span className="text-white font-semibold truncate max-w-[220px]">
+                      {popupFileName}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-white/40 block text-[10px] uppercase font-bold tracking-wider">Settings</span>
+                    <span className="text-white/40 block text-[10px] uppercase font-bold tracking-wider">
+                      Settings
+                    </span>
                     <span className="text-white font-semibold">{popupSettings}</span>
                   </div>
                   <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                    <span className="text-white/40 block text-[10px] uppercase font-bold tracking-wider">Total Cost</span>
+                    <span className="text-white/40 block text-[10px] uppercase font-bold tracking-wider">
+                      Total Cost
+                    </span>
                     <span className="text-emerald-400 font-extrabold text-xs">
-                      ₹{popupCost.toFixed(2)} <span className="text-emerald-400 font-semibold">(Paid)</span>
+                      ₹{popupCost.toFixed(2)}{" "}
+                      <span className="text-emerald-400 font-semibold">(Paid)</span>
                     </span>
                   </div>
                 </div>
-
               </div>
 
               {/* Bottom Upload Another Action Button */}
@@ -1055,12 +1123,10 @@ export function CustomerDashboardClient({
               >
                 Upload Another Document
               </button>
-
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { generateCustomerReleaseOtp } from "@/services/print-jobs/otp-service";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    
+
     // Create the print job
     const job = await createCustomerPrintJob({
       title: body.title || "Print Job",
@@ -18,21 +18,28 @@ export async function POST(req: NextRequest) {
       pageRange: body.pageRange || "",
       paperQuality: body.paperQuality || "standard",
       specialInstructions: body.specialInstructions || "",
-      pageCount: Number(body.pageCount || (Array.isArray(body.files) ? body.files.reduce((a: number, f: any) => a + (Number(f.pageCount) || 1), 0) : 1)),
+      pageCount: Number(
+        body.pageCount ||
+          (Array.isArray(body.files)
+            ? body.files.reduce((a: number, f: any) => a + (Number(f.pageCount) || 1), 0)
+            : 1),
+      ),
       estimatedCost: Number(body.estimatedCost || 0),
       fileHistory: body.fileHistory || "",
-      files: Array.isArray(body.files) ? body.files.map((f: any) => ({
-        fileName: f.fileName || f.name || "document.pdf",
-        fileSize: Number(f.fileSize || f.size || 0),
-        mimeType: f.mimeType || f.type || "application/pdf",
-        pageCount: Number(f.pageCount || f.pages || 1),
-        previewUrl: typeof f.previewUrl === "string" ? f.previewUrl : null,
-        storageKey: typeof f.storageKey === "string" ? f.storageKey : null
-      })) : undefined,
+      files: Array.isArray(body.files)
+        ? body.files.map((f: any) => ({
+            fileName: f.fileName || f.name || "document.pdf",
+            fileSize: Number(f.fileSize || f.size || 0),
+            mimeType: f.mimeType || f.type || "application/pdf",
+            pageCount: Number(f.pageCount || f.pages || 1),
+            previewUrl: typeof f.previewUrl === "string" ? f.previewUrl : null,
+            storageKey: typeof f.storageKey === "string" ? f.storageKey : null,
+          }))
+        : undefined,
     });
 
     // Automatically generate secure release OTP
-    let otpCode = "734901"; // Fallback default
+    let otpCode = "7349"; // Fallback default
     try {
       const otpResult = await generateCustomerReleaseOtp(job.id);
       if (otpResult && otpResult.code) {
@@ -53,14 +60,14 @@ export async function POST(req: NextRequest) {
         estimatedCost: Number(job.estimatedCost || 0),
         createdAt: job.createdAt.toISOString(),
         otpCode,
-        shopName: "Apex Digital"
-      }
+        shopName: "Apex Digital",
+      },
     });
   } catch (error: any) {
     console.error("Error creating print job in API route:", error);
     return NextResponse.json(
       { success: false, error: error.message || "Failed to create print job" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

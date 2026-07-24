@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/database/client";
@@ -74,11 +75,12 @@ export async function createUserSession(userId: string, portalRole?: "CUSTOMER" 
   return session;
 }
 
-export async function getCurrentSession() {
+async function resolveCurrentSession() {
   try {
     const cookieStore = await cookies();
     const rawSession = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-    const portalRoleCookie = cookieStore.get("fluxa_portal_role")?.value as "CUSTOMER" | "ORGANIZATION" | undefined;
+    const portalRoleCookie = cookieStore.get("fluxa_portal_role")?.value as
+      "CUSTOMER" | "ORGANIZATION" | undefined;
 
     if (rawSession) {
       const [sessionId, token] = rawSession.split(".");
@@ -135,6 +137,8 @@ export async function getCurrentSession() {
     return null;
   }
 }
+
+export const getCurrentSession = cache(resolveCurrentSession);
 
 export async function signOutCurrentSession() {
   const cookieStore = await cookies();
