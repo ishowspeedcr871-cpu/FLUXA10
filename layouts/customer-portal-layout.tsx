@@ -12,6 +12,15 @@ import {
   Sparkles
 } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { RoutePrefetcher } from "@/components/navigation/route-prefetcher";
+
+const customerRoutes = [
+  "/customer",
+  "/customer/history",
+  "/customer/settings",
+  "/customer/profile",
+  "/customer/jobs/new",
+] as const;
 
 interface CustomerPortalLayoutProps {
   children: React.ReactNode;
@@ -33,6 +42,7 @@ export function CustomerPortalLayout({ children, userEmail = "fluxa1409@gmail.co
 
   return (
     <div className="min-h-screen bg-[#050508] text-white flex items-center justify-center p-0 md:p-6 select-none relative overflow-x-hidden font-sans">
+      <RoutePrefetcher routes={customerRoutes} />
       {/* Background radial neon decorative glows matching the image */}
       <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-accent-cyan/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 rounded-full bg-accent-magenta/5 blur-[120px] pointer-events-none" />

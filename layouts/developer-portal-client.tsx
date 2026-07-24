@@ -5,9 +5,36 @@ import { PremiumAnimatedBackground } from "@/components/ui/premium-animated-back
 import { Search, Menu, LayoutGrid, Users, ShieldCheck, BarChart3, Settings as SettingsIcon, X } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { RoutePrefetcher } from "@/components/navigation/route-prefetcher";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+
+const developerRoutes = [
+  "/developer",
+  "/developer/users",
+  "/developer/employees",
+  "/developer/organizations",
+  "/developer/customers",
+  "/developer/approvals",
+  "/developer/subscriptions",
+  "/developer/features",
+  "/developer/analytics",
+  "/developer/settings",
+  "/developer/whatsapp",
+  "/developer/audit-logs",
+  "/developer/errors",
+  "/developer/api-keys",
+  "/developer/ai",
+  "/developer/intelligence",
+  "/developer/secrets",
+  "/developer/ocr",
+  "/developer/jobs",
+  "/developer/storage",
+  "/developer/health",
+  "/developer/search",
+  "/developer/announcements",
+] as const;
 
 export function DeveloperPortalClient({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -20,6 +47,7 @@ export function DeveloperPortalClient({ children }: { children: React.ReactNode 
 
   return (
     <>
+      <RoutePrefetcher routes={developerRoutes} />
       <PremiumAnimatedBackground />
       <div className="relative flex min-h-screen text-white selection:bg-accent-cyan/30">
         {/* Desktop Sidebar */}
