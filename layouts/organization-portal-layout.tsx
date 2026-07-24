@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutGrid,
@@ -18,6 +18,17 @@ import {
 } from "lucide-react";
 import { PremiumAnimatedBackground } from "@/components/ui/premium-animated-background";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { RoutePrefetcher } from "@/components/navigation/route-prefetcher";
+
+const organizationRoutes = [
+  "/organization",
+  "/organization/members",
+  "/employee/customers",
+  "/employee/queue",
+  "/printers",
+  "/organization/intelligence",
+  "/organization/settings",
+] as const;
 
 interface OrganizationPortalLayoutProps {
   children: React.ReactNode;
@@ -31,7 +42,6 @@ export function OrganizationPortalLayout({
   organizationName = "Fluxa HQ"
 }: OrganizationPortalLayoutProps) {
   const pathname = usePathname() || "";
-  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Determine current bottom navigation tab based on path
@@ -44,6 +54,7 @@ export function OrganizationPortalLayout({
 
   return (
     <div className="min-h-screen bg-[#050508] text-white flex items-center justify-center p-0 md:p-6 select-none relative overflow-x-hidden font-sans">
+      <RoutePrefetcher routes={organizationRoutes} />
       <PremiumAnimatedBackground />
 
       {/* Styled Responsive Device Shell */}

@@ -15,6 +15,16 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/services/auth/actions";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { RoutePrefetcher } from "@/components/navigation/route-prefetcher";
+
+const employeeRoutes = [
+  "/employee",
+  "/employee/printers",
+  "/employee/analytics",
+  "/employee/settings/whatsapp",
+  "/employee/settings",
+  "/employee/profile",
+] as const;
 
 interface EmployeePortalLayoutProps {
   children: React.ReactNode;
@@ -43,6 +53,7 @@ export function EmployeePortalLayout({ children }: EmployeePortalLayoutProps) {
 
   return (
     <div className="min-h-screen bg-[#050508] text-white flex items-center justify-center p-0 md:p-6 select-none relative overflow-x-hidden font-sans">
+      <RoutePrefetcher routes={employeeRoutes} />
       {/* Background glow effects */}
       <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-accent-cyan/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 rounded-full bg-accent-magenta/5 blur-[120px] pointer-events-none" />
