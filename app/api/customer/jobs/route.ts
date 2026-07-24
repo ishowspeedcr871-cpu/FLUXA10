@@ -25,7 +25,9 @@ export async function POST(req: NextRequest) {
         fileName: f.fileName || f.name || "document.pdf",
         fileSize: Number(f.fileSize || f.size || 0),
         mimeType: f.mimeType || f.type || "application/pdf",
-        pageCount: Number(f.pageCount || f.pages || 1)
+        pageCount: Number(f.pageCount || f.pages || 1),
+        previewUrl: typeof f.previewUrl === "string" ? f.previewUrl : null,
+        storageKey: typeof f.storageKey === "string" ? f.storageKey : null
       })) : undefined,
     });
 

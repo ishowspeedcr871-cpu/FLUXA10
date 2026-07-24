@@ -153,7 +153,10 @@ export async function createCustomerPrintJob(input: CreatePrintJobInput) {
           fileName: f.fileName,
           fileSize: f.fileSize,
           mimeType: f.mimeType,
-          status: "UPLOADED"
+          storageKey: f.storageKey || null,
+          previewUrl: f.previewUrl || null,
+          status: "UPLOADED",
+          progress: 100
         }))
       } : undefined,
     },
@@ -249,6 +252,7 @@ export async function createPrintJobAction(formData: FormData) {
     specialInstructions: formData.get("specialInstructions"),
     estimatedCost: formData.get("estimatedCost"),
     fileHistory: formData.get("fileHistory"),
+    files: JSON.parse(String(formData.get("filesJson") || "[]")),
   });
   if (!parsed.success) redirect("/customer/jobs/new?error=invalid_job");
   const job = await createCustomerPrintJob(parsed.data);

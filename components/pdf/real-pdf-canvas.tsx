@@ -1,11 +1,15 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import * as pdfjsLib from "pdfjs-dist";
 
-// Set CDN worker for pdfjs-dist
-if (typeof window !== "undefined" && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+type PdfJs = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+
+async function loadPdfJs(): Promise<PdfJs> {
+  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+  }
+  return pdfjsLib;
 }
 
 export interface PdfCanvasProps {
@@ -99,6 +103,7 @@ export function RealPdfCanvas({
         }
 
         if (pdfSource) {
+          const pdfjsLib = await loadPdfJs();
           const loadingTask = pdfjsLib.getDocument(pdfSource);
           const pdf = await loadingTask.promise;
           if (isCancelled) return;

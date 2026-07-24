@@ -37,6 +37,8 @@ type UploadedFile = {
   color: boolean;
   orientation: "portrait" | "landscape";
   rawFile?: File;
+  previewUrl?: string | null;
+  storageKey?: string | null;
 };
 
 type DbJob = {
@@ -60,6 +62,15 @@ interface CustomerDashboardClientProps {
   initialFilter?: "active" | "completed" | "history";
   whatsappNumber?: string | null;
   orgSettings?: any | null;
+}
+
+function readFileAsDataUrl(file: File): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
 }
 
 export function CustomerDashboardClient({
@@ -114,7 +125,7 @@ export function CustomerDashboardClient({
     setMounted(true);
   }, []);
 
-  const handleFileUpload = (files: FileList | null) => {
+  const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     
     const incomingFiles = Array.from(files);
@@ -149,6 +160,8 @@ export function CustomerDashboardClient({
           for (const f of incomingFiles) {
             const pdfName = f.name.replace(/\.[^/.]+$/, "") + ".pdf";
             const actualPages = await getDocumentPageCount(f);
+            const canPersistPreview = (f.type.startsWith("image/") || f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) && f.size <= 4 * 1024 * 1024;
+            const previewUrl = canPersistPreview ? await readFileAsDataUrl(f) : null;
             
             newFiles.push({
               id: crypto.randomUUID(),
@@ -159,6 +172,8 @@ export function CustomerDashboardClient({
               color: false,
               orientation: "portrait",
               rawFile: f,
+              previewUrl,
+              storageKey: previewUrl,
             });
           }
 
@@ -192,7 +207,8 @@ export function CustomerDashboardClient({
   }, [stagedFiles]);
 
   const pricePerPage = colorMode ? 10 : 2; // Rs 2 for B/W, Rs 10 for Color
-  const grandTotalCost = totalPages * pricePerPage * copies;
+  const activeSubtotal = totalPages * pricePerPage * copies;
+  const grandTotalCost = activeSubtotal;
 
   const clearStagedFiles = () => {
     setStagedFiles([]);
@@ -249,7 +265,9 @@ export function CustomerDashboardClient({
             fileName: f.name,
             fileSize: f.size,
             mimeType: f.type,
-            pageCount: f.pages
+            pageCount: f.pages,
+            previewUrl: f.previewUrl,
+            storageKey: f.storageKey
           }))
         }),
       });
