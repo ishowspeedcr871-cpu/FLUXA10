@@ -65,9 +65,9 @@ export function EmployeePrintersClient({
       // Active job or queue representation
       let activeJobText = "Idle";
       if (printer.status === "BUSY") {
-        activeJobText = `#FLX-9002`;
+        activeJobText = printer.currentJobId ? `#${String(printer.currentJobId).slice(-8).toUpperCase()}` : "Busy";
       } else if (printer.status === "ONLINE") {
-        activeJobText = index % 2 === 0 ? `#FLX-9001` : `Queue (${Math.floor(Math.random() * 3) + 1})`;
+        activeJobText = "Available";
       }
 
       // Friendly display fields matching the beautiful screenshot labels
@@ -147,7 +147,7 @@ export function EmployeePrintersClient({
             Welcome back,
           </p>
           <h1 className="text-2xl font-black text-white tracking-tight">
-            {organizationName || "Apex Digital Print Solutions"}!
+            {organizationName}!
           </h1>
         </div>
 

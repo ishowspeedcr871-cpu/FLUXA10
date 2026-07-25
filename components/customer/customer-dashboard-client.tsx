@@ -62,6 +62,7 @@ interface CustomerDashboardClientProps {
   initialFilter?: "active" | "completed" | "history";
   whatsappNumber?: string | null;
   orgSettings?: any | null;
+  organizationName: string;
 }
 
 function readFileAsDataUrl(file: File): Promise<string | null> {
@@ -82,6 +83,7 @@ export function CustomerDashboardClient({
   initialFilter = "active",
   whatsappNumber,
   orgSettings,
+  organizationName,
 }: CustomerDashboardClientProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -908,7 +910,7 @@ export function CustomerDashboardClient({
                         Printer Shop:
                       </span>
                       <span className="text-white font-semibold">
-                        {job.shopName || "Apex Digital"}
+                        {job.shopName || organizationName}
                       </span>
                     </div>
 
@@ -917,7 +919,7 @@ export function CustomerDashboardClient({
                       <span className="text-[11px] font-extrabold tracking-widest text-[#a236a5]/80 uppercase mr-1.5">
                         OTP:
                       </span>
-                      {renderOtpDigits(job.otpCode || "7349")}
+                      {job.otpCode ? renderOtpDigits(job.otpCode) : null}
                     </div>
                   </div>
                 </div>
@@ -959,7 +961,7 @@ export function CustomerDashboardClient({
                     Welcome back,
                   </span>
                   <span className="text-[13px] font-bold text-white tracking-wide">
-                    Apex Digital Print Solutions!
+                    {organizationName}!
                   </span>
                 </div>
               </div>
@@ -970,10 +972,10 @@ export function CustomerDashboardClient({
                   My Print Queue
                 </h3>
 
-                {/* Status capsule exactly styled as "Status: Awaiting Pickup at Apex Digital" */}
+                {/* Status capsule exactly styled as "Status: Awaiting Pickup at {organizationName}" */}
                 <div className="flex justify-center">
                   <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-accent-cyan/30 bg-[#0c161d] text-accent-cyan text-xs font-bold tracking-wide shadow-[0_0_12px_rgba(6,182,212,0.15)]">
-                    Status: Awaiting Pickup at Apex Digital
+                    Status: Awaiting Pickup at {organizationName}
                   </div>
                 </div>
 

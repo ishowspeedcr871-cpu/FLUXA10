@@ -41,7 +41,7 @@ export default async function SettingsPage() {
     const serializedJobs = serializeData(awaitingJobs);
 
     return (
-      <EmployeePortalLayout>
+      <EmployeePortalLayout profile={{ user: { name: user.name, email: user.email }, organization: { name: organization.name }, role: { name: membership.role.name } }}>
         <EmployeeSettingsClient
           user={serializedUser}
           membership={serializedMembership}

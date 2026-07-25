@@ -27,7 +27,7 @@ interface EmployeeSettingsClientProps {
     email: string;
   };
   membership: {
-    role: string;
+    role: { name: string; key?: string } | string;
   };
   organization: {
     name: string;
@@ -80,10 +80,8 @@ export function EmployeeSettingsClient({
 
   // Friendly role display logic matching standard corporate titles
   const formattedRole = useMemo(() => {
-    if (liveMembership.role === "ADMIN" || liveMembership.role === "OWNER") {
-      return "System Administrator";
-    }
-    return "Operations Associate";
+    const role = typeof liveMembership.role === "string" ? liveMembership.role : liveMembership.role.name;
+    return role || "Team Member";
   }, [liveMembership.role]);
 
   // Replicate status dots and active printers list from screenshot
@@ -177,10 +175,10 @@ export function EmployeeSettingsClient({
                 {/* User labels */}
                 <div className="space-y-1">
                   <div className="text-xs font-bold text-slate-400">
-                    Name: <span className="text-white text-sm">{liveUser.name || "Apex Digital Admin"}</span>
+                    Name: <span className="text-white text-sm">{liveUser.name || liveUser.email}</span>
                   </div>
                   <div className="text-[11px] font-bold text-slate-400">
-                    Email: <span className="text-white">{liveUser.email || "admin@apexdigital.com"}</span>
+                    Email: <span className="text-white">{liveUser.email}</span>
                   </div>
                   <div className="text-[11px] font-bold text-slate-400">
                     Role: <span className="text-accent-cyan uppercase tracking-wider text-[10px] ml-1">{formattedRole}</span>

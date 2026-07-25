@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Automatically generate secure release OTP
-    let otpCode = "7349"; // Fallback default
+    let otpCode = job.otpCode;
     try {
       const otpResult = await generateCustomerReleaseOtp(job.id);
       if (otpResult && otpResult.code) {
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
         estimatedCost: Number(job.estimatedCost || 0),
         createdAt: job.createdAt.toISOString(),
         otpCode,
-        shopName: "Apex Digital",
+        shopName: body.organizationName || null,
       },
     });
   } catch (error: any) {

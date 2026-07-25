@@ -9,7 +9,7 @@ import { requireQueueAccess } from "@/services/employee/employee-service";
 
 export default async function EmployeeDashboardPage() {
   try {
-    const { organization } = await requireQueueAccess();
+    const { user, membership, organization } = await requireQueueAccess();
 
     // Fetch independent queue and printer data concurrently; auth session is request-cached.
     const [data, printers] = await Promise.all([
@@ -32,7 +32,7 @@ export default async function EmployeeDashboardPage() {
     const serializedPrinters = serializeData(printers);
 
     return (
-      <EmployeePortalLayout>
+      <EmployeePortalLayout profile={{ user: { name: user.name, email: user.email }, organization: { name: organization.name }, role: { name: membership.role.name } }}>
         <EmployeeDashboardClient
           initialJobs={serializedJobs}
           initialPrinters={serializedPrinters}

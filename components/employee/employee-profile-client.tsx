@@ -67,7 +67,7 @@ export function EmployeeProfileClient({
           <div className="text-center md:text-left space-y-2">
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
               <h1 className="text-3xl font-black text-white tracking-tight">
-                {user.name || "Apex Associate"}
+                {user.name || user.email}
               </h1>
               <span className="px-3 py-1 rounded-full bg-accent-cyan/10 border border-accent-cyan/20 text-accent-cyan text-[10px] font-black uppercase tracking-widest">
                 {membership.role.name}
