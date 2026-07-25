@@ -53,7 +53,7 @@ import { z } from "zod";
 
 const telemetryUpdateSchema = z.object({
   status: z.enum(["ONLINE", "OFFLINE", "BUSY", "ERROR", "MAINTENANCE"]),
-  health: z.enum(["GOOD", "WARNING", "CRITICAL", "UNKNOWN"]).optional(),
+  health: z.enum(["GOOD", "WARNING", "CRITICAL"]).optional(),
   inkLevel: z.any().optional(),
   tonerLevel: z.any().optional(),
   paperLevels: z.any().optional(),
@@ -65,7 +65,7 @@ const discoveryUpsertSchema = z.object({
   model: z.string().optional(),
   ipAddress: z.string().optional(),
   macAddress: z.string().min(1),
-  connectionType: z.enum(["USB", "NETWORK_IP", "CLOUD_API", "SPOOLER_AGENT", "CUPS", "IPP", "OTHER"]).default("NETWORK_IP"),
+  connectionType: z.enum(["USB", "WIFI", "ETHERNET", "BLUETOOTH", "IPP", "NETWORK_IP", "CLOUD"]).default("NETWORK_IP"),
 });
 
 export async function updatePrinterTelemetry(id: string, data: any) {

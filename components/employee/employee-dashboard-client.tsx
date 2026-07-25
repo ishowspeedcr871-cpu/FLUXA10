@@ -103,8 +103,8 @@ export function EmployeeDashboardClient({
     const interval = setInterval(async () => {
       try {
         const liveJobs = await fetchLiveQueue({
-          status: statusFilter === "ALL" ? "all" : statusFilter.toLowerCase(),
-          priority: priorityFilter === "ALL" ? "all" : priorityFilter.toLowerCase(),
+          status: statusFilter === "ALL" ? "all" : statusFilter,
+          priority: priorityFilter === "ALL" ? "all" : priorityFilter,
           q: searchQuery,
         });
         setJobs(liveJobs);
@@ -120,8 +120,8 @@ export function EmployeeDashboardClient({
     startTransition(async () => {
       try {
         const liveJobs = await fetchLiveQueue({
-          status: statusFilter === "ALL" ? "all" : statusFilter.toLowerCase(),
-          priority: priorityFilter === "ALL" ? "all" : priorityFilter.toLowerCase(),
+          status: statusFilter === "ALL" ? "all" : statusFilter,
+          priority: priorityFilter === "ALL" ? "all" : priorityFilter,
           q: searchQuery,
         });
         setJobs(liveJobs);
@@ -183,7 +183,7 @@ export function EmployeeDashboardClient({
     setVerifying(false);
 
     if (res.success && res.job) {
-      setOtp(["", "", "", "", "", ""]);
+      setOtp(["", "", "", ""]);
       setReviewJob(res.job);
       setSuccess("OTP Verified! Opening Print Review & Edit screen.");
       setTimeout(() => setSuccess(null), 3000);

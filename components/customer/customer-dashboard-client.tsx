@@ -990,8 +990,8 @@ export function CustomerDashboardClient({
                     {/* First 3 Blocks */}
                     <div className="flex gap-1.5">
                       {popupOtpCode
-                        .padEnd(6, "0")
-                        .substring(0, 3)
+                        .padEnd(4, "0")
+                        .substring(0, 2)
                         .split("")
                         .map((char, i) => (
                           <div
@@ -1010,8 +1010,8 @@ export function CustomerDashboardClient({
                     {/* Next 3 Blocks */}
                     <div className="flex gap-1.5">
                       {popupOtpCode
-                        .padEnd(6, "0")
-                        .substring(3, 6)
+                        .padEnd(4, "0")
+                        .substring(2, 4)
                         .split("")
                         .map((char, i) => (
                           <div
