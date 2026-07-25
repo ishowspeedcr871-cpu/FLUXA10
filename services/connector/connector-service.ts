@@ -1,37 +1,42 @@
 import { prisma } from "@/database/client";
 import { completedAtForStatus } from "@/services/print-jobs/status-utils";
 import { z } from "zod";
-import { upsertPrinterFromDiscovery, updatePrinterTelemetry } from "@/services/printers/printer-service";
+import {
+  upsertPrinterFromDiscovery,
+  updatePrinterTelemetry,
+} from "@/services/printers/printer-service";
 import { randomBytes } from "node:crypto";
 
 export async function verifyOrganizationApiKey(key: string) {
   const apiKey = await prisma.organizationApiKey.findUnique({
     where: { key },
-    include: { organization: true }
+    include: { organization: true },
   });
-  
+
   if (!apiKey || (apiKey.expiresAt && apiKey.expiresAt < new Date())) {
     return null;
   }
-  
-  // Update last used
-  await prisma.organizationApiKey.update({
-    where: { id: apiKey.id },
-    data: { lastUsedAt: new Date() }
-  });
-  
+
+  // Do not block high-frequency connector polling on telemetry writes.
+  void prisma.organizationApiKey
+    .update({
+      where: { id: apiKey.id },
+      data: { lastUsedAt: new Date() },
+    })
+    .catch((error) => console.warn("[CONNECTOR_API_KEY_TOUCH_FAILED]", error));
+
   return apiKey.organization;
 }
 
 export async function createOrganizationApiKey(organizationId: string, name: string) {
   const key = `fluxa_${randomBytes(32).toString("hex")}`;
-  
+
   return prisma.organizationApiKey.create({
     data: {
       organizationId,
       name,
-      key
-    }
+      key,
+    },
   });
 }
 
@@ -57,39 +62,39 @@ const heartbeatSchema = z.object({
 
 export async function printerHeartbeat(organizationId: string, data: any) {
   const validated = heartbeatSchema.parse(data);
-  
+
   const printer = await prisma.printer.findUnique({
-    where: { 
+    where: {
       organizationId_macAddress: {
         organizationId,
-        macAddress: validated.macAddress
-      }
-    }
+        macAddress: validated.macAddress,
+      },
+    },
   });
-  
+
   if (!printer) throw new Error("Printer not registered");
-  
+
   return updatePrinterTelemetry(printer.id, validated);
 }
 
 export async function getPendingJobsForPrinter(organizationId: string, macAddress: string) {
   const printer = await prisma.printer.findUnique({
-    where: { 
+    where: {
       organizationId_macAddress: {
         organizationId,
-        macAddress
-      }
-    }
+        macAddress,
+      },
+    },
   });
-  
+
   if (!printer) return [];
-  
+
   return prisma.printJob.findMany({
     where: {
       printerId: printer.id,
-      status: "PRINTING"
+      status: "PRINTING",
     },
-    include: { files: true }
+    include: { files: true },
   });
 }
 
@@ -97,16 +102,35 @@ export async function getPendingJobsForOrganization(organizationId: string) {
   return prisma.printJob.findMany({
     where: {
       organizationId,
-      status: { in: ["PRINTING", "OTP_VERIFIED", "WAITING_FOR_PRINTER"] }
+      status: { in: ["PRINTING", "OTP_VERIFIED", "WAITING_FOR_PRINTER"] },
     },
-    include: { files: true, printer: true }
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      copies: true,
+      color: true,
+      duplex: true,
+      pageCount: true,
+      estimatedCost: true,
+      printerId: true,
+      files: {
+        select: { id: true, fileName: true, fileSize: true, mimeType: true, storageKey: true },
+      },
+      printer: { select: { id: true, name: true, status: true, macAddress: true } },
+    },
   });
 }
 
-export async function updatePrintJobStatusFromConnector(organizationId: string, jobId: string, status: "COMPLETED" | "FAILED", notes?: string) {
+export async function updatePrintJobStatusFromConnector(
+  organizationId: string,
+  jobId: string,
+  status: "COMPLETED" | "FAILED",
+  notes?: string,
+) {
   const job = await prisma.printJob.findFirst({
     where: { id: jobId, organizationId },
-    include: { printer: true }
+    include: { printer: true },
   });
 
   if (!job) throw new Error("Job not found");
@@ -119,25 +143,24 @@ export async function updatePrintJobStatusFromConnector(organizationId: string, 
       events: {
         create: {
           toStatus: status,
-          note: notes || `Print job reported ${status.toLowerCase()} by Desktop Print Agent.`
-        }
-      }
-    }
+          note: notes || `Print job reported ${status.toLowerCase()} by Desktop Print Agent.`,
+        },
+      },
+    },
   });
 
   // If printer was associated, free it back to ONLINE if no other printing jobs
   if (job.printerId) {
     const activeJobsOnPrinter = await prisma.printJob.count({
-      where: { printerId: job.printerId, status: "PRINTING" }
+      where: { printerId: job.printerId, status: "PRINTING" },
     });
     if (activeJobsOnPrinter === 0) {
       await prisma.printer.update({
         where: { id: job.printerId },
-        data: { status: "ONLINE" }
+        data: { status: "ONLINE" },
       });
     }
   }
 
   return updatedJob;
 }
-

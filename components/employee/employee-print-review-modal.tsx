@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   X,
   Printer,
@@ -26,7 +26,7 @@ interface EmployeePrintReviewModalProps {
   isReleasing?: boolean;
 }
 
-export function EmployeePrintReviewModal({
+function EmployeePrintReviewModalComponent({
   job,
   printers = [],
   onClose,
@@ -52,8 +52,10 @@ export function EmployeePrintReviewModal({
 
   // Real-time automatic total price calculation matching FLUXA rates
   // Rs 2 for B/W, Rs 10 for Color per page, per copy
-  const rate = color ? 10 : 2;
-  const newTotalCost = pageCount * copies * rate;
+  const newTotalCost = useMemo(
+    () => pageCount * copies * (color ? 10 : 2),
+    [color, copies, pageCount],
+  );
 
   const displayOtp =
     job?.otpCode || (job?.id && job.id.length >= 4 ? job.id.slice(-4).toUpperCase() : "0000");
@@ -66,25 +68,40 @@ export function EmployeePrintReviewModal({
     }
   }, [printers, printerId]);
 
-  const handleReleaseSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onConfirmRelease(
-      {
-        color,
-        copies,
-        duplex,
-        paperSize,
-        orientation,
-        pageRange,
-        printerId,
-        printQuality,
-        scaling,
-        fitToPage,
-      },
-      newTotalCost,
-      reason,
-    );
-  };
+  const releaseSettings = useMemo(
+    () => ({
+      color,
+      copies,
+      duplex,
+      paperSize,
+      orientation,
+      pageRange,
+      printerId,
+      printQuality,
+      scaling,
+      fitToPage,
+    }),
+    [
+      color,
+      copies,
+      duplex,
+      paperSize,
+      orientation,
+      pageRange,
+      printerId,
+      printQuality,
+      scaling,
+      fitToPage,
+    ],
+  );
+
+  const handleReleaseSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      void onConfirmRelease(releaseSettings, newTotalCost, reason);
+    },
+    [newTotalCost, onConfirmRelease, reason, releaseSettings],
+  );
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-start justify-center overflow-y-auto overscroll-contain p-2 sm:p-4 select-none">
@@ -144,7 +161,9 @@ export function EmployeePrintReviewModal({
             <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-wider">
               Job ID reference
             </span>
-            <span className="text-slate-300 font-mono mt-0.5 block break-all">#{job?.id?.toUpperCase()}</span>
+            <span className="text-slate-300 font-mono mt-0.5 block break-all">
+              #{job?.id?.toUpperCase()}
+            </span>
           </div>
           <div>
             <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-wider">
@@ -555,3 +574,5 @@ export function EmployeePrintReviewModal({
     </div>
   );
 }
+
+export const EmployeePrintReviewModal = memo(EmployeePrintReviewModalComponent);

@@ -32,15 +32,6 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function readFileAsDataUrl(file: File): Promise<string | null> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
-  });
-}
-
 export function CustomerUploadWorkspace({
   createAction,
 }: {
@@ -56,6 +47,7 @@ export function CustomerUploadWorkspace({
   const [pageRange, setPageRange] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [title, setTitle] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const rate = color ? 10 : 2;
   const totalPages = useMemo(() => {
@@ -66,40 +58,42 @@ export function CustomerUploadWorkspace({
   async function addFiles(files: FileList | null) {
     if (!files) return;
     const incoming = Array.from(files);
-    const next = await Promise.all(incoming.map(async (file): Promise<UploadQueueItem> => {
-      const isDocx = file.name.endsWith(".docx");
-      const isPptx = file.name.endsWith(".pptx");
-      const accepted = [
-        "application/pdf",
-        "image/png",
-        "image/jpeg",
-        "image/webp",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      ].includes(file.type) || isDocx || isPptx;
+    const next = await Promise.all(
+      incoming.map(async (file): Promise<UploadQueueItem> => {
+        const isDocx = file.name.endsWith(".docx");
+        const isPptx = file.name.endsWith(".pptx");
+        const accepted =
+          [
+            "application/pdf",
+            "image/png",
+            "image/jpeg",
+            "image/webp",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          ].includes(file.type) ||
+          isDocx ||
+          isPptx;
 
-      const [pages, previewUrl] = accepted
-        ? await Promise.all([
-            getDocumentPageCount(file),
-            file.type.startsWith("image/") || file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
-              ? readFileAsDataUrl(file)
-              : Promise.resolve(null),
-          ])
-        : [1, null];
+        const pages = accepted ? await getDocumentPageCount(file) : 1;
 
-      return {
-        id: crypto.randomUUID(),
-        name: file.name,
-        size: file.size,
-        type: file.type || "application/octet-stream",
-        progress: accepted ? 100 : 0,
-        status: accepted ? "accepted" : "rejected",
-        pages,
-        rawFile: file,
-        previewUrl,
-        storageKey: previewUrl,
-      };
-    }));
+        // Do not serialize file bytes as data URLs into React state or job payloads.
+        // Previews use the in-memory File object and persisted storage is filled by the upload backend.
+        const previewUrl = null;
+
+        return {
+          id: crypto.randomUUID(),
+          name: file.name,
+          size: file.size,
+          type: file.type || "application/octet-stream",
+          progress: accepted ? 100 : 0,
+          status: accepted ? "accepted" : "rejected",
+          pages,
+          rawFile: file,
+          previewUrl,
+          storageKey: previewUrl,
+        };
+      }),
+    );
 
     // Automatically set form title based on first accepted file if not already set
     const firstAccepted = next.find((item) => item.status === "accepted");
@@ -172,7 +166,9 @@ export function CustomerUploadWorkspace({
                       orientation: orientation,
                       rawFile: f.rawFile,
                     }))}
-                  onDeleteFile={(id) => setQueue((current) => current.filter((item) => item.id !== id))}
+                  onDeleteFile={(id) =>
+                    setQueue((current) => current.filter((item) => item.id !== id))
+                  }
                   onReplaceFile={(e) => addFiles(e.target.files)}
                 />
               </div>
@@ -197,11 +193,10 @@ export function CustomerUploadWorkspace({
                             <FileText className="size-5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-white">
-                              {file.name}
-                            </p>
+                            <p className="truncate text-sm font-medium text-white">{file.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {file.pages} pages · {formatSize(file.size)} · {file.type.split("/")[1]?.toUpperCase() || "DOC"}
+                              {file.pages} pages · {formatSize(file.size)} ·{" "}
+                              {file.type.split("/")[1]?.toUpperCase() || "DOC"}
                             </p>
                           </div>
                         </div>
@@ -265,6 +260,7 @@ export function CustomerUploadWorkspace({
           <CardContent>
             <form
               action={async (formData) => {
+                setIsSubmitting(true);
                 try {
                   // Ensure form values are synced
                   formData.set("title", title);
@@ -278,21 +274,31 @@ export function CustomerUploadWorkspace({
                   formData.set("estimatedCost", String(subtotal));
                   const acceptedFiles = queue.filter((f) => f.status === "accepted");
                   formData.set("fileHistory", acceptedFiles.map((f) => f.name).join(", "));
-                  formData.set("filesJson", JSON.stringify(acceptedFiles.map((f) => ({
-                    fileName: f.name,
-                    fileSize: f.size,
-                    mimeType: f.type,
-                    pageCount: f.pages,
-                    previewUrl: f.previewUrl,
-                    storageKey: f.storageKey,
-                  }))));
+                  formData.set(
+                    "filesJson",
+                    JSON.stringify(
+                      acceptedFiles.map((f) => ({
+                        fileName: f.name,
+                        fileSize: f.size,
+                        mimeType: f.type,
+                        pageCount: f.pages,
+                        previewUrl: null,
+                        storageKey: null,
+                      })),
+                    ),
+                  );
                   await createAction(formData);
                 } catch (error: any) {
-                  if (error.message === 'NEXT_REDIRECT' || error?.digest?.startsWith('NEXT_REDIRECT')) {
+                  if (
+                    error.message === "NEXT_REDIRECT" ||
+                    error?.digest?.startsWith("NEXT_REDIRECT")
+                  ) {
                     return;
                   }
                   console.error("Order creation error:", error);
                   alert("Failed to place order. Please try again.");
+                } finally {
+                  setIsSubmitting(false);
                 }
               }}
               className="space-y-5"
@@ -427,7 +433,9 @@ export function CustomerUploadWorkspace({
                   <Select
                     name="orientation"
                     value={orientation}
-                    onChange={(event) => setOrientation(event.target.value as "portrait" | "landscape")}
+                    onChange={(event) =>
+                      setOrientation(event.target.value as "portrait" | "landscape")
+                    }
                     className="rounded-2xl border-white/15 bg-black/25 text-white"
                   >
                     <option value="portrait">Portrait</option>
@@ -522,10 +530,10 @@ export function CustomerUploadWorkspace({
               {/* Place Order CTA Button */}
               <Button
                 type="submit"
-                disabled={queue.filter((f) => f.status === "accepted").length === 0}
+                disabled={queue.filter((f) => f.status === "accepted").length === 0 || isSubmitting}
                 className="w-full h-14 rounded-full bg-gradient-to-r from-accent-cyan to-accent-magenta text-black text-base font-bold hover:opacity-90 shadow-lg shadow-accent-cyan/10 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Place Print Order
+                {isSubmitting ? "Submitting…" : "Place Print Order"}
               </Button>
             </form>
           </CardContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { memo, useEffect, useRef, useState } from "react";
 
 type PdfJs = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
 
@@ -22,7 +22,7 @@ export interface PdfCanvasProps {
   onClick?: () => void;
 }
 
-export function RealPdfCanvas({
+function RealPdfCanvasComponent({
   fileName,
   rawFile,
   fileUrl,
@@ -68,10 +68,9 @@ export function RealPdfCanvas({
       try {
         // 1. Handle Images
         const isRawImage = rawFile?.type?.startsWith("image/");
-        const isUrlImage = fileUrl && (
-          fileUrl.match(/\.(jpeg|jpg|gif|png|webp)/i) || 
-          fileUrl.startsWith("data:image/")
-        );
+        const isUrlImage =
+          fileUrl &&
+          (fileUrl.match(/\.(jpeg|jpg|gif|png|webp)/i) || fileUrl.startsWith("data:image/"));
 
         if (isRawImage || isUrlImage) {
           const img = new Image();
@@ -119,43 +118,51 @@ export function RealPdfCanvas({
 
         // 2. Handle PDF
         let pdfSource: any = null;
+        let objectUrl: string | null = null;
         if (rawFile) {
-          pdfSource = new Uint8Array(await rawFile.arrayBuffer());
+          objectUrl = URL.createObjectURL(rawFile);
+          pdfSource = objectUrl;
         } else if (fileUrl) {
           pdfSource = fileUrl;
         }
 
         if (pdfSource) {
           const pdfjsLib = await loadPdfJs();
-          const loadingTask = pdfjsLib.getDocument(pdfSource);
-          const pdf = await loadingTask.promise;
-          if (isCancelled) return;
+          const loadingTask = pdfjsLib.getDocument({ url: pdfSource, disableAutoFetch: true });
 
-          const targetPageNum = Math.min(Math.max(1, pageNum), pdf.numPages);
-          const page = await pdf.getPage(targetPageNum);
-          if (isCancelled) return;
+          try {
+            const pdf = await loadingTask.promise;
+            if (isCancelled) return;
 
-          const viewport = page.getViewport({ scale });
-          const canvas = canvasRef.current;
-          if (!canvas) return;
+            const targetPageNum = Math.min(Math.max(1, pageNum), pdf.numPages);
+            const page = await pdf.getPage(targetPageNum);
+            if (isCancelled) return;
 
-          const context = canvas.getContext("2d");
-          if (!context) return;
+            const viewport = page.getViewport({ scale });
+            const canvas = canvasRef.current;
+            if (!canvas) return;
 
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
+            const context = canvas.getContext("2d");
+            if (!context) return;
 
-          const renderContext = {
-            canvasContext: context,
-            viewport,
-            canvas,
-          };
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
 
-          await page.render(renderContext).promise;
-          if (!isCancelled) {
-            setLoading(false);
-            setRendered(true);
-            return;
+            const renderContext = {
+              canvasContext: context,
+              viewport,
+              canvas,
+            };
+
+            await page.render(renderContext).promise;
+            if (!isCancelled) {
+              setLoading(false);
+              setRendered(true);
+              return;
+            }
+          } finally {
+            await loadingTask.destroy();
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
           }
         }
       } catch (err) {
@@ -186,10 +193,11 @@ export function RealPdfCanvas({
       }
     }
 
-    renderPage();
+    const renderPromise = renderPage();
 
     return () => {
       isCancelled = true;
+      void renderPromise;
     };
   }, [fileName, rawFile, fileUrl, pageNum, scale, isVisible]);
 
@@ -208,3 +216,5 @@ export function RealPdfCanvas({
     </div>
   );
 }
+
+export const RealPdfCanvas = memo(RealPdfCanvasComponent);
