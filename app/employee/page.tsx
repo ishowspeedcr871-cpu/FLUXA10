@@ -9,19 +9,23 @@ import { requireQueueAccess } from "@/services/employee/employee-service";
 
 export default async function EmployeeDashboardPage() {
   try {
-    const { user, membership, organization } = await requireQueueAccess();
+    const queueContext = await requireQueueAccess();
+    const { user, membership, organization } = queueContext;
 
     // Fetch independent queue and printer data concurrently; auth session is request-cached.
     const [data, printers] = await Promise.all([
-      listPrintQueue({
-        page: 1,
-        pageSize: 20,
-        status: "all",
-        priority: "all",
-        assigned: "all",
-        sort: "createdAt",
-        direction: "desc",
-      }),
+      listPrintQueue(
+        {
+          page: 1,
+          pageSize: 20,
+          status: "all",
+          priority: "all",
+          assigned: "all",
+          sort: "createdAt",
+          direction: "desc",
+        },
+        queueContext,
+      ),
       prisma.printer.findMany({
         where: { organizationId: organization.id, deletedAt: null },
         orderBy: { name: "asc" },

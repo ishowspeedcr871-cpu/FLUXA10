@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createCustomerPrintJob } from "@/services/print-jobs/print-job-service";
-import { generateCustomerReleaseOtp } from "@/services/print-jobs/otp-service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,16 +37,7 @@ export async function POST(req: NextRequest) {
         : undefined,
     });
 
-    // Automatically generate secure release OTP
-    let otpCode = job.otpCode;
-    try {
-      const otpResult = await generateCustomerReleaseOtp(job.id);
-      if (otpResult && otpResult.code) {
-        otpCode = otpResult.code;
-      }
-    } catch (otpErr) {
-      console.warn("Could not generate OTP automatically inside API route:", otpErr);
-    }
+    const otpCode = job.otpCode;
 
     return NextResponse.json({
       success: true,

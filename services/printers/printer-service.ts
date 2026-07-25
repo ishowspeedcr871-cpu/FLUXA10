@@ -10,9 +10,11 @@ import {
 import { createAuditLog } from "@/services/audit/log";
 import { processWaitingJobs } from "@/services/print-queue/queue-service";
 
-export async function listPrinters() {
+type PrinterListContext = Awaited<ReturnType<typeof requireOrganizationPermission>>;
+
+export async function listPrinters(context?: PrinterListContext) {
   try {
-    const { organization } = await requireOrganizationPermission(
+    const { organization } = context ?? await requireOrganizationPermission(
       ORGANIZATION_PERMISSIONS.PRINTERS_READ,
     );
 
