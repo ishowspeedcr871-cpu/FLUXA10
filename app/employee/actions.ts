@@ -23,96 +23,88 @@ export async function fetchLiveQueue(filters?: { status?: string; priority?: str
 
 export async function verifyOtpForReviewAction(otp: string) {
   try {
+    const startedAt = Date.now();
     const { session, organization } = await requireEmployeeContext();
     const cleanOtp = normalizeOtp(otp);
     if (cleanOtp.length !== OTP_DIGITS) {
       return { success: false, error: `Please enter a valid ${OTP_DIGITS}-digit OTP code.` };
     }
 
-    let targetJobId: string | null = null;
+    const now = new Date();
+    const otpHash = hashOtp(cleanOtp);
 
-    // 1. Try finding in PrintJobOtp table by codeHash
-    const foundOtp = await prisma.printJobOtp.findFirst({
-      where: {
-        codeHash: hashOtp(cleanOtp),
-        status: "ACTIVE",
-        expiresAt: { gt: new Date() },
-        printJob: { organizationId: organization.id },
-      },
-      include: { printJob: true },
-    });
-
-    if (foundOtp) {
-      targetJobId = foundOtp.printJobId;
-    } else {
-      // 2. Fallback for legacy jobs with OTP columns on PrintJob, using indexed lookup.
-      const matchingJob = await prisma.printJob.findFirst({
+    const result = await prisma.$transaction(async (tx) => {
+      const foundOtp = await tx.printJobOtp.findFirst({
         where: {
-          organizationId: organization.id,
-          status: { notIn: ["COMPLETED", "CANCELLED", "FAILED"] },
-          OR: [{ otpCodeHash: hashOtp(cleanOtp) }, { otpCode: cleanOtp }],
+          codeHash: otpHash,
+          status: "ACTIVE",
+          expiresAt: { gt: now },
+          printJob: { organizationId: organization.id },
         },
-        select: { id: true },
+        select: { id: true, printJobId: true },
       });
 
-      if (matchingJob) {
-        targetJobId = matchingJob.id;
-      }
-    }
+      const matchingJob = foundOtp
+        ? null
+        : await tx.printJob.findFirst({
+            where: {
+              organizationId: organization.id,
+              status: { notIn: ["COMPLETED", "CANCELLED", "FAILED"] },
+              otpGeneratedAt: { gt: new Date(now.getTime() - 60 * 60 * 1000) },
+              OR: [{ otpCodeHash: otpHash }, { otpCode: cleanOtp }],
+            },
+            select: { id: true },
+          });
 
-    if (!targetJobId) {
+      const targetJobId = foundOtp?.printJobId || matchingJob?.id;
+      if (!targetJobId) return null;
+
+      const job = await tx.printJob.findFirst({
+        where: { id: targetJobId, organizationId: organization.id },
+        include: {
+          customerUser: true,
+          files: true,
+          printer: true,
+        },
+      });
+      if (!job) return null;
+
+      const updates: Promise<unknown>[] = [];
+      if (foundOtp) {
+        updates.push(tx.printJobOtp.update({
+          where: { id: foundOtp.id },
+          data: { status: "VERIFIED", verifiedAt: now, verifiedByUserId: session.userId },
+        }));
+      }
+
+      if (["DRAFT", "QUEUED", "OTP_GENERATED", "READY"].includes(job.status)) {
+        updates.push(tx.printJob.update({
+          where: { id: job.id },
+          data: {
+            status: "OTP_VERIFIED",
+            events: {
+              create: {
+                fromStatus: job.status,
+                toStatus: "OTP_VERIFIED",
+                actorUserId: session.userId,
+                note: "OTP successfully verified by employee. Job is now ready for review.",
+              },
+            },
+          },
+        }));
+        job.status = "OTP_VERIFIED";
+      }
+
+      await Promise.all(updates);
+      return job;
+    }, { timeout: 2500 });
+
+    if (!result) {
       return { success: false, error: "Invalid or expired collection OTP." };
     }
 
-    // Load the print job with dependencies
-    const job = await prisma.printJob.findFirst({
-      where: { id: targetJobId, organizationId: organization.id },
-      include: {
-        customerUser: true,
-        files: true,
-        printer: true,
-      },
-    });
-
-    if (!job) {
-      return { success: false, error: "Print job not found." };
-    }
-
-    // Mark the OTP as verified if it was from foundOtp
-    if (foundOtp) {
-      await prisma.printJobOtp.update({
-        where: { id: foundOtp.id },
-        data: {
-          status: "VERIFIED",
-          verifiedAt: new Date(),
-          verifiedByUserId: session.userId,
-        },
-      });
-    }
-
-    // Update status to OTP_VERIFIED if not already printing or completed
-    if (["DRAFT", "QUEUED", "OTP_GENERATED", "READY"].includes(job.status)) {
-      await prisma.printJob.update({
-        where: { id: job.id },
-        data: {
-          status: "OTP_VERIFIED",
-          events: {
-            create: {
-              fromStatus: job.status,
-              toStatus: "OTP_VERIFIED",
-              actorUserId: session.userId,
-              note: "OTP successfully verified by employee. Job is now ready for review.",
-            },
-          },
-        },
-      });
-      job.status = "OTP_VERIFIED";
-    }
-
-    return {
-      success: true,
-      job: serializeData(job),
-    };
+    console.info(`[OTP_REVIEW_VERIFY] completed in ${Date.now() - startedAt}ms`);
+    return { success: true, job: serializeData(result) };
   } catch (err: any) {
     unstable_rethrow(err);
     return { success: false, error: err.message || "Failed to verify OTP." };

@@ -34,6 +34,7 @@ export function EmployeePrintersClient({
   const [isScanning, setIsScanning] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [scanMessage, setScanMessage] = useState<string | null>(null);
+  const supportedMethods = ["USB", "Network/IP", "Wi-Fi", "Ethernet", "Bluetooth", "Windows Shared", "CUPS", "IPP", "RAW 9100", "LPR/LPD", "Epson ePOS", "Star", "Brother", "HP", "Canon", "Zebra", "Thermal", "Receipt", "Label", "PDF Virtual"];
 
   // Parse or mock toner levels for rich visual fidelity
   const processedPrinters = useMemo(() => {
@@ -110,7 +111,7 @@ export function EmployeePrintersClient({
       });
       const data = await res.json();
       if (data.success) {
-        setScanMessage(`Success! Found and registered ${data.count} new local network printers.`);
+        setScanMessage(data.message || `Success! Found and registered ${data.count} printers from connector heartbeats.`);
         startTransition(() => {
           router.refresh();
         });
@@ -327,6 +328,23 @@ export function EmployeePrintersClient({
                               Active Job: {printer.activeJobText}
                             </span>
                           </div>
+                          <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-400 pt-3 border-t border-white/5">
+                            <span>Connection: <b className="text-white">{printer.connectionType || "NETWORK_IP"}</b></span>
+                            <span>Driver: <b className="text-white">{printer.driver || "Connector/OS"}</b></span>
+                            <span>IP: <b className="text-cyan-300">{printer.ipAddress || "Local/Virtual"}</b></span>
+                            <span>Last seen: <b className="text-white">{printer.lastSeenAt ? new Date(printer.lastSeenAt).toLocaleString() : "Unknown"}</b></span>
+                            <span>Default: <b className="text-white">{printer.isDefault ? "Yes" : "No"}</b></span>
+                            <span>Queue: <b className="text-white">{printer._count?.jobs ?? printer.queueLength ?? 0}</b></span>
+                            <span>Health: <b className={printer.health === "GOOD" ? "text-emerald-400" : "text-amber-400"}>{printer.health || "UNKNOWN"}</b></span>
+                            <span>Errors: <b className={printer.status === "ERROR" ? "text-rose-400" : "text-emerald-400"}>{printer.status === "ERROR" ? "Check connector" : "None"}</b></span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 pt-2">
+                            {["Test Print", "Reconnect", "Remove Printer"].map((action) => (
+                              <button key={action} type="button" className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-200 hover:border-cyan-400/40 hover:text-cyan-200">
+                                {action}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       ) : (
                         /* Offline Printer view from Screenshot */
@@ -446,6 +464,14 @@ export function EmployeePrintersClient({
             <p className="text-xs text-muted-foreground leading-relaxed mb-5">
               The Fluxa Cloud Connector enables secure printing from any device to your local physical printing workshop network. Follow these steps to register your workspace devices:
             </p>
+
+            <div className="mb-5 flex flex-wrap gap-2">
+              {supportedMethods.map((method) => (
+                <span key={method} className="rounded-full border border-cyan-400/15 bg-cyan-400/5 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-200">
+                  {method}
+                </span>
+              ))}
+            </div>
 
             {/* Instruction Steps */}
             <div className="space-y-4">

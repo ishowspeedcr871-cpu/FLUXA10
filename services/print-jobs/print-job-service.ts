@@ -6,7 +6,7 @@ import type { CreatePrintJobInput, PrintJobQuery } from "@/features/print-jobs/s
 import { createAuditLog } from "@/services/audit/log";
 import { estimateUploadCost } from "@/features/customer/upload-schemas";
 import { requireCustomerContext } from "@/services/customer/customer-service";
-import { generateOtpCode, hashOtp } from "@/services/print-jobs/otp-utils";
+import { generateOtpCode, hashOtp, OTP_TTL_MINUTES } from "@/services/print-jobs/otp-utils";
 import { createNotification } from "@/services/notifications/notification-service";
 
 const lifecycle: PrintJobStatus[] = [
@@ -30,8 +30,15 @@ export async function getCustomerDashboard() {
   const { session, organization } = await requireCustomerContext();
   const [recentJobs, activeJobs, completedJobs, unreadNotifications] = await prisma.$transaction([
     prisma.printJob.findMany({
-      where: { organizationId: organization.id, customerUserId: session.userId },
-      include: { files: true },
+      where: {
+        organizationId: organization.id,
+        customerUserId: session.userId,
+        OR: [
+          { status: { not: "OTP_GENERATED" } },
+          { otpHistory: { some: { status: "ACTIVE", expiresAt: { gt: new Date() } } } },
+        ],
+      },
+      include: { files: true, otpHistory: { where: { status: "ACTIVE", expiresAt: { gt: new Date() } }, take: 1 } },
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
@@ -113,6 +120,7 @@ export async function createCustomerPrintJob(input: CreatePrintJobInput) {
   const { session, organization } = await requireCustomerContext();
   const code = generateOtpCode();
   const codeHash = hashOtp(code);
+  const otpExpiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
 
   const job = await prisma.printJob.create({
     data: {
@@ -127,6 +135,7 @@ export async function createCustomerPrintJob(input: CreatePrintJobInput) {
       estimatedCost: input.estimatedCost ?? estimateUploadCost(input),
       otpCode: code,
       otpCodeHash: codeHash,
+      otpGeneratedAt: new Date(),
       metadata: {
         uploadConfiguration: {
           paperSize: input.paperSize,
@@ -146,6 +155,14 @@ export async function createCustomerPrintJob(input: CreatePrintJobInput) {
           userId: session.userId,
           action: "print_job.created",
           description: `Created print job ${input.title}`,
+        },
+      },
+      otpHistory: {
+        create: {
+          code,
+          codeHash,
+          generatedByUserId: session.userId,
+          expiresAt: otpExpiresAt,
         },
       },
       files: input.files ? {

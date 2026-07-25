@@ -112,8 +112,15 @@ export async function listPrintQueue(input: QueueQuery) {
 
     const query = queueQuerySchema.parse(input);
     const skip = (query.page - 1) * query.pageSize;
+    const activeOtpVisibility = {
+      OR: [
+        { status: { not: "OTP_GENERATED" as const } },
+        { otpHistory: { some: { status: "ACTIVE" as const, expiresAt: { gt: new Date() } } } },
+      ],
+    };
     const where = {
       organizationId: organization.id,
+      ...activeOtpVisibility,
       ...(query.status === "all" ? {} : { status: query.status }),
       ...(query.priority === "all" ? {} : { priority: query.priority }),
       ...(query.assigned === "mine"
