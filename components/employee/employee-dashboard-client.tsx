@@ -34,6 +34,7 @@ import {
   releaseJobWithUpdatedSettingsAction,
 } from "@/app/employee/actions";
 import { EmployeePrintReviewModal } from "@/components/employee/employee-print-review-modal";
+import { FluxaLoadingScreen } from "@/components/feedback/fluxa-loading-screen";
 
 interface Job {
   id: string;
@@ -372,6 +373,12 @@ export function EmployeeDashboardClient({
 
   return (
     <div className="space-y-6">
+      {(verifying || isPending || releasing) && (
+        <FluxaLoadingScreen
+          message={verifying ? "Verifying secure OTP…" : releasing ? "Releasing print job…" : "Refreshing queue…"}
+          submessage={verifying ? "Checking job authorization before release" : "Syncing the latest workshop queue"}
+        />
+      )}
       {/* 1. TOP TOOLBAR & QUICK METRICS BAR */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <div className="bg-[#0b0b12] border border-white/10 rounded-2xl p-4 flex flex-col justify-between">

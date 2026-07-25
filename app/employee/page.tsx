@@ -1,15 +1,19 @@
 export const dynamic = "force-dynamic";
 import { EmployeePortalLayout } from "@/layouts/employee-portal-layout";
+import { getEmployeeLayoutProps } from "@/services/employee/layout-props";
 import { listPrintQueue } from "@/services/print-queue/queue-service";
 import { EmployeeDashboardClient } from "@/components/employee/employee-dashboard-client";
 import { AlertCircle } from "lucide-react";
+
 import { serializeData } from "@/lib/serialization";
 import { prisma } from "@/database/client";
 import { requireQueueAccess } from "@/services/employee/employee-service";
+import { measureAsync } from "@/lib/performance";
 
 export default async function EmployeeDashboardPage() {
   try {
-    const { organization } = await requireQueueAccess();
+    const context = await measureAsync("employee.dashboard.rbac", requireQueueAccess);
+    const { organization } = context;
 
     // Fetch independent queue and printer data concurrently; auth session is request-cached.
     const [data, printers] = await Promise.all([
@@ -21,18 +25,20 @@ export default async function EmployeeDashboardPage() {
         assigned: "all",
         sort: "createdAt",
         direction: "desc",
-      }),
-      prisma.printer.findMany({
-        where: { organizationId: organization.id, deletedAt: null },
-        orderBy: { name: "asc" },
-      }),
+      }, context),
+      measureAsync("employee.dashboard.printers.prisma", () =>
+        prisma.printer.findMany({
+          where: { organizationId: organization.id, deletedAt: null },
+          orderBy: { name: "asc" },
+        }),
+      ),
     ]);
 
     const serializedJobs = serializeData(data.jobs);
     const serializedPrinters = serializeData(printers);
 
     return (
-      <EmployeePortalLayout>
+      <EmployeePortalLayout {...getEmployeeLayoutProps(context)}>
         <EmployeeDashboardClient
           initialJobs={serializedJobs}
           initialPrinters={serializedPrinters}

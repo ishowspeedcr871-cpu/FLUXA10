@@ -1,68 +1,75 @@
 export const dynamic = 'force-dynamic';
 import { EmployeePortalLayout } from "@/layouts/employee-portal-layout";
+import { getEmployeeLayoutProps } from "@/services/employee/layout-props";
 import { prisma } from "@/database/client";
 import { requireEmployeeContext } from "@/services/employee/employee-service";
+import { measureAsync } from "@/lib/performance";
 import { EmployeeAnalyticsClient } from "@/components/employee/employee-analytics-client";
 import { serializeData } from "@/lib/serialization";
 import { AlertCircle } from "lucide-react";
 
+
 export default async function AnalyticsPage() {
   try {
-    const { organization } = await requireEmployeeContext();
+    const context = await measureAsync("employee.analytics.rbac", requireEmployeeContext);
+    const { organization } = context;
 
-    // 1. Fetch live count of active print jobs (jobs in the queue)
-    const liveActiveJobsCount = await prisma.printJob.count({
-      where: {
-        organizationId: organization.id,
-        status: { notIn: ["COMPLETED", "CANCELLED", "FAILED", "COLLECTED"] }
-      }
-    });
+    const [liveActiveJobsCount, queueValueSum, printers, awaitingJobs] = await Promise.all([
+      measureAsync("employee.analytics.activeJobs.prisma", () =>
+        prisma.printJob.count({
+          where: {
+            organizationId: organization.id,
+            status: { notIn: ["COMPLETED", "CANCELLED", "FAILED", "COLLECTED"] },
+          },
+        }),
+      ),
+      measureAsync("employee.analytics.queueValue.prisma", () =>
+        prisma.printJob.aggregate({
+          where: {
+            organizationId: organization.id,
+            status: { notIn: ["COMPLETED", "CANCELLED", "FAILED", "COLLECTED"] },
+          },
+          _sum: {
+            estimatedCost: true,
+          },
+        }),
+      ),
+      measureAsync("employee.analytics.printers.prisma", () =>
+        prisma.printer.findMany({
+          where: {
+            organizationId: organization.id,
+            deletedAt: null,
+          },
+        }),
+      ),
+      measureAsync("employee.analytics.awaitingJobs.prisma", () =>
+        prisma.printJob.findMany({
+          where: {
+            organizationId: organization.id,
+            status: { in: ["READY", "PRINTING", "QUEUED", "ASSIGNED"] },
+          },
+          include: {
+            customerUser: true,
+            files: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 6,
+        }),
+      ),
+    ]);
 
-    // 2. Calculate cumulative queue monetary value (live)
-    const queueValueSum = await prisma.printJob.aggregate({
-      where: {
-        organizationId: organization.id,
-        status: { notIn: ["COMPLETED", "CANCELLED", "FAILED", "COLLECTED"] }
-      },
-      _sum: {
-        estimatedCost: true
-      }
-    });
-
-    const liveQueueValue = queueValueSum._sum.estimatedCost 
-      ? Number(queueValueSum._sum.estimatedCost) 
+    const liveQueueValue = queueValueSum._sum.estimatedCost
+      ? Number(queueValueSum._sum.estimatedCost)
       : 0;
-
-    // 3. Fetch registered printers
-    const printers = await prisma.printer.findMany({
-      where: { 
-        organizationId: organization.id, 
-        deletedAt: null 
-      }
-    });
-
-    // 4. Fetch actual awaiting pickup queue jobs (e.g. status: READY, UPLOADED, QUEUED, PRINTING)
-    const awaitingJobs = await prisma.printJob.findMany({
-      where: {
-        organizationId: organization.id,
-        status: { in: ["READY", "PRINTING", "QUEUED", "ASSIGNED"] }
-      },
-      include: {
-        customerUser: true,
-        files: true
-      },
-      orderBy: {
-        createdAt: "desc"
-      },
-      take: 6
-    });
 
     // 5. Serialize data to safely bridge the RSC/Client Component boundary
     const serializedPrinters = serializeData(printers);
     const serializedJobs = serializeData(awaitingJobs);
 
     return (
-      <EmployeePortalLayout>
+      <EmployeePortalLayout {...getEmployeeLayoutProps(context)}>
         <EmployeeAnalyticsClient
           initialJobs={serializedJobs}
           initialPrinters={serializedPrinters}

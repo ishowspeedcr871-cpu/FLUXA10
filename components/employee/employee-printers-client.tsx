@@ -17,6 +17,7 @@ import {
   Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FluxaLoadingScreen } from "@/components/feedback/fluxa-loading-screen";
 
 interface EmployeePrintersClientProps {
   initialPrinters: any[];
@@ -140,6 +141,12 @@ export function EmployeePrintersClient({
 
   return (
     <div className="space-y-8 pb-16">
+      {(isScanning || isPending) && (
+        <FluxaLoadingScreen
+          message={isScanning ? "Scanning printer network…" : "Refreshing printers…"}
+          submessage={scanMessage || "Checking connected devices and queue status"}
+        />
+      )}
       {/* Welcome Banner / Breadcrumb style */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -147,7 +154,7 @@ export function EmployeePrintersClient({
             Welcome back,
           </p>
           <h1 className="text-2xl font-black text-white tracking-tight">
-            {organizationName || "Apex Digital Print Solutions"}!
+            {organizationName}!
           </h1>
         </div>
 

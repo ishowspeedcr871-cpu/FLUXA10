@@ -1,37 +1,44 @@
 export const dynamic = 'force-dynamic';
 import { EmployeePortalLayout } from "@/layouts/employee-portal-layout";
+import { getEmployeeLayoutProps } from "@/services/employee/layout-props";
 import { prisma } from "@/database/client";
 import { getEmployeeProfile } from "@/services/employee/employee-service";
+import { measureAsync } from "@/lib/performance";
 import { EmployeeSettingsClient } from "@/components/employee/employee-settings-client";
 import { serializeData } from "@/lib/serialization";
 import { AlertCircle } from "lucide-react";
 
+
 export default async function SettingsPage() {
   try {
-    const { user, membership, organization } = await getEmployeeProfile();
+    const context = await measureAsync("employee.settings.profile.rbac", getEmployeeProfile);
+    const { user, membership, organization } = context;
 
-    // 1. Fetch registered printers for organization
-    const printers = await prisma.printer.findMany({
-      where: { organizationId: organization.id, deletedAt: null },
-      orderBy: [{ status: "asc" }, { name: "asc" }],
-      take: 3,
-    });
-
-    // 2. Fetch active print jobs in the organization for the pickup queue
-    const awaitingJobs = await prisma.printJob.findMany({
-      where: {
-        organizationId: organization.id,
-        status: { in: ["READY", "PRINTING", "QUEUED", "ASSIGNED"] }
-      },
-      include: {
-        customerUser: true,
-        files: true
-      },
-      orderBy: {
-        createdAt: "desc"
-      },
-      take: 5
-    });
+    const [printers, awaitingJobs] = await Promise.all([
+      measureAsync("employee.settings.printers.prisma", () =>
+        prisma.printer.findMany({
+          where: { organizationId: organization.id, deletedAt: null },
+          orderBy: [{ status: "asc" }, { name: "asc" }],
+          take: 3,
+        }),
+      ),
+      measureAsync("employee.settings.awaitingJobs.prisma", () =>
+        prisma.printJob.findMany({
+          where: {
+            organizationId: organization.id,
+            status: { in: ["READY", "PRINTING", "QUEUED", "ASSIGNED"] },
+          },
+          include: {
+            customerUser: true,
+            files: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 5,
+        }),
+      ),
+    ]);
 
     // 3. Serialize data safely
     const serializedUser = serializeData(user);
@@ -41,7 +48,7 @@ export default async function SettingsPage() {
     const serializedJobs = serializeData(awaitingJobs);
 
     return (
-      <EmployeePortalLayout>
+      <EmployeePortalLayout {...getEmployeeLayoutProps(context)}>
         <EmployeeSettingsClient
           user={serializedUser}
           membership={serializedMembership}

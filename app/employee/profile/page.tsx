@@ -1,13 +1,17 @@
 export const dynamic = 'force-dynamic';
 import { EmployeePortalLayout } from "@/layouts/employee-portal-layout";
+import { getEmployeeLayoutProps } from "@/services/employee/layout-props";
 import { getEmployeeProfile } from "@/services/employee/employee-service";
+import { measureAsync } from "@/lib/performance";
 import { EmployeeProfileClient } from "@/components/employee/employee-profile-client";
 import { serializeData } from "@/lib/serialization";
 import { AlertCircle } from "lucide-react";
 
+
 export default async function EmployeeProfilePage() {
   try {
-    const { user, membership, organization } = await getEmployeeProfile();
+    const context = await measureAsync("employee.profile.profile.rbac", getEmployeeProfile);
+    const { user, membership, organization } = context;
 
     // Serialize data safely
     const serializedUser = serializeData(user);
@@ -15,7 +19,7 @@ export default async function EmployeeProfilePage() {
     const serializedOrganization = serializeData(organization);
 
     return (
-      <EmployeePortalLayout>
+      <EmployeePortalLayout {...getEmployeeLayoutProps(context)}>
         <EmployeeProfileClient
           user={serializedUser}
           membership={serializedMembership}

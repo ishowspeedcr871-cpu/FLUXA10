@@ -2,6 +2,7 @@ import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/database/client";
+import { measureAsync } from "@/lib/performance";
 import { SESSION_COOKIE_NAME } from "@/services/auth/constants";
 
 const SESSION_TTL_DAYS = 30;
@@ -86,19 +87,77 @@ async function resolveCurrentSession() {
       const [sessionId, token] = rawSession.split(".");
       if (sessionId && token) {
         const tokenHash = hashToken(token);
-        const session = await prisma.session.findUnique({
-          where: { id: sessionId },
-          include: {
-            user: {
-              include: {
-                memberships: {
-                  include: {
-                    organization: true,
-                    role: {
-                      include: {
-                        permissions: {
-                          include: {
-                            permission: true,
+        const session = await measureAsync("auth.resolveCurrentSession.prisma", () =>
+          prisma.session.findUnique({
+            where: { id: sessionId },
+            select: {
+              id: true,
+              userId: true,
+              status: true,
+              tokenHash: true,
+              expiresAt: true,
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  name: true,
+                  imageUrl: true,
+                  emailVerifiedAt: true,
+                  status: true,
+                  createdAt: true,
+                  updatedAt: true,
+                  deletedAt: true,
+                  memberships: {
+                    where: { status: "ACTIVE", deletedAt: null },
+                    select: {
+                      id: true,
+                      organizationId: true,
+                      userId: true,
+                      roleId: true,
+                      status: true,
+                      createdAt: true,
+                      updatedAt: true,
+                      deletedAt: true,
+                      organization: {
+                        select: {
+                          id: true,
+                          name: true,
+                          slug: true,
+                          status: true,
+                          timezone: true,
+                          currency: true,
+                          createdAt: true,
+                          updatedAt: true,
+                          deletedAt: true,
+                        },
+                      },
+                      role: {
+                        select: {
+                          id: true,
+                          key: true,
+                          name: true,
+                          description: true,
+                          scope: true,
+                          isSystem: true,
+                          createdAt: true,
+                          updatedAt: true,
+                          permissions: {
+                            select: {
+                              roleId: true,
+                              permissionId: true,
+                              createdAt: true,
+                              permission: {
+                                select: {
+                                  id: true,
+                                  key: true,
+                                  name: true,
+                                  description: true,
+                                  scope: true,
+                                  createdAt: true,
+                                  updatedAt: true,
+                                },
+                              },
+                            },
                           },
                         },
                       },
@@ -107,8 +166,8 @@ async function resolveCurrentSession() {
                 },
               },
             },
-          },
-        });
+          }),
+        );
 
         if (
           session &&

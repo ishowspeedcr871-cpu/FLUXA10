@@ -1,41 +1,48 @@
 export const dynamic = 'force-dynamic';
 import { EmployeePortalLayout } from "@/layouts/employee-portal-layout";
+import { getEmployeeLayoutProps } from "@/services/employee/layout-props";
 import { prisma } from "@/database/client";
 import { requireEmployeeContext } from "@/services/employee/employee-service";
+import { measureAsync } from "@/lib/performance";
 import { EmployeePrintersClient } from "@/components/employee/employee-printers-client";
 import { serializeData } from "@/lib/serialization";
 import { AlertCircle } from "lucide-react";
 
+
 export default async function PrintersPage() {
   try {
-    const { organization } = await requireEmployeeContext();
+    const context = await measureAsync("employee.printers.rbac", requireEmployeeContext);
+    const { organization } = context;
 
-    // 1. Fetch registered printers for this organization
-    const printers = await prisma.printer.findMany({
-      where: { organizationId: organization.id, deletedAt: null },
-      orderBy: [{ status: "asc" }, { name: "asc" }],
-    });
-
-    // 2. Fetch active print jobs in the organization to feed the global queue table
-    const jobs = await prisma.printJob.findMany({
-      where: { 
-        organizationId: organization.id,
-        status: { notIn: ["CANCELLED", "FAILED"] }
-      },
-      include: { 
-        customerUser: true,
-        printer: true 
-      },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    });
+    const [printers, jobs] = await Promise.all([
+      measureAsync("employee.printers.list.prisma", () =>
+        prisma.printer.findMany({
+          where: { organizationId: organization.id, deletedAt: null },
+          orderBy: [{ status: "asc" }, { name: "asc" }],
+        }),
+      ),
+      measureAsync("employee.printers.jobs.prisma", () =>
+        prisma.printJob.findMany({
+          where: {
+            organizationId: organization.id,
+            status: { notIn: ["CANCELLED", "FAILED"] },
+          },
+          include: {
+            customerUser: true,
+            printer: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        }),
+      ),
+    ]);
 
     // 3. Prevent Client Component serialization crashes
     const serializedPrinters = serializeData(printers);
     const serializedJobs = serializeData(jobs);
 
     return (
-      <EmployeePortalLayout>
+      <EmployeePortalLayout {...getEmployeeLayoutProps(context)}>
         <EmployeePrintersClient 
           initialPrinters={serializedPrinters} 
           initialJobs={serializedJobs}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { FluxaLoadingScreen } from "@/components/feedback/fluxa-loading-screen";
 import { Input } from "@/components/ui/input";
 import { updateWhatsappNumber } from "@/app/employee/settings/whatsapp/actions";
 import { Loader2, Phone } from "lucide-react";
@@ -34,6 +35,12 @@ export function WhatsappSettingsClient({
 
   return (
     <div className="space-y-6 pb-12">
+      {isLoading && (
+        <FluxaLoadingScreen
+          message="Saving WhatsApp settings…"
+          submessage="Updating the authenticated workshop contact channel"
+        />
+      )}
       <div>
         <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
           Integrations

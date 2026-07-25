@@ -1,20 +1,26 @@
 export const dynamic = 'force-dynamic';
 import { EmployeePortalLayout } from "@/layouts/employee-portal-layout";
+import { getEmployeeLayoutProps } from "@/services/employee/layout-props";
 import { prisma } from "@/database/client";
 import { getEmployeeProfile } from "@/services/employee/employee-service";
+import { measureAsync } from "@/lib/performance";
 import { WhatsappSettingsClient } from "@/components/employee/whatsapp-settings-client";
 import { AlertCircle } from "lucide-react";
 
+
 export default async function WhatsappSettingsPage() {
   try {
-    const { organization } = await getEmployeeProfile();
+    const context = await measureAsync("employee.whatsapp.profile.rbac", getEmployeeProfile);
+    const { organization } = context;
 
-    const orgSettings = await prisma.organizationSettings.findUnique({
-      where: { organizationId: organization.id }
-    });
+    const orgSettings = await measureAsync("employee.whatsapp.settings.prisma", () =>
+      prisma.organizationSettings.findUnique({
+        where: { organizationId: organization.id },
+      }),
+    );
 
     return (
-      <EmployeePortalLayout>
+      <EmployeePortalLayout {...getEmployeeLayoutProps(context)}>
         <WhatsappSettingsClient initialNumber={orgSettings?.supportPhone || null} />
       </EmployeePortalLayout>
     );

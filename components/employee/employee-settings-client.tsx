@@ -27,7 +27,10 @@ interface EmployeeSettingsClientProps {
     email: string;
   };
   membership: {
-    role: string;
+    role: {
+      key?: string | null;
+      name?: string | null;
+    } | string;
   };
   organization: {
     name: string;
@@ -80,10 +83,14 @@ export function EmployeeSettingsClient({
 
   // Friendly role display logic matching standard corporate titles
   const formattedRole = useMemo(() => {
-    if (liveMembership.role === "ADMIN" || liveMembership.role === "OWNER") {
-      return "System Administrator";
+    const roleKey = typeof liveMembership.role === "string" ? liveMembership.role : liveMembership.role?.key;
+    const roleName = typeof liveMembership.role === "string" ? liveMembership.role : liveMembership.role?.name;
+
+    if (roleKey === "admin" || roleKey === "organization-admin" || roleKey === "organization-owner") {
+      return roleName || "System Administrator";
     }
-    return "Operations Associate";
+
+    return roleName || "Operations Associate";
   }, [liveMembership.role]);
 
   // Replicate status dots and active printers list from screenshot
@@ -177,10 +184,10 @@ export function EmployeeSettingsClient({
                 {/* User labels */}
                 <div className="space-y-1">
                   <div className="text-xs font-bold text-slate-400">
-                    Name: <span className="text-white text-sm">{liveUser.name || "Apex Digital Admin"}</span>
+                    Name: <span className="text-white text-sm">{liveUser.name || liveUser.email.split("@")[0]}</span>
                   </div>
                   <div className="text-[11px] font-bold text-slate-400">
-                    Email: <span className="text-white">{liveUser.email || "admin@apexdigital.com"}</span>
+                    Email: <span className="text-white">{liveUser.email}</span>
                   </div>
                   <div className="text-[11px] font-bold text-slate-400">
                     Role: <span className="text-accent-cyan uppercase tracking-wider text-[10px] ml-1">{formattedRole}</span>

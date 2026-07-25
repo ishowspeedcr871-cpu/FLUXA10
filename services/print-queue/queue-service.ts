@@ -3,6 +3,7 @@ import { unstable_rethrow } from "next/navigation";
 import type { QueueQuery } from "@/features/print-queue/schemas";
 import { queueQuerySchema } from "@/features/print-queue/schemas";
 import { requireQueueAccess } from "@/services/employee/employee-service";
+import { measureAsync } from "@/lib/performance";
 import { hashOtp, normalizeOtp, OTP_DIGITS } from "@/services/print-jobs/otp-utils";
 
 export async function getEmployeeDashboard() {
@@ -106,9 +107,11 @@ export async function processWaitingJobs(organizationId: string) {
   }
 }
 
-export async function listPrintQueue(input: QueueQuery) {
+type QueueAccessContext = Awaited<ReturnType<typeof requireQueueAccess>>;
+
+export async function listPrintQueue(input: QueueQuery, context?: QueueAccessContext) {
   try {
-    const { session, organization } = await requireQueueAccess();
+    const { session, organization } = context ?? (await measureAsync("employee.queue.rbac", requireQueueAccess));
 
     const query = queueQuerySchema.parse(input);
     const skip = (query.page - 1) * query.pageSize;
@@ -140,7 +143,7 @@ export async function listPrintQueue(input: QueueQuery) {
           : query.sort === "priority"
             ? { priority: query.direction }
             : { createdAt: query.direction };
-    const [jobsRaw, total] = await prisma.$transaction([
+    const [jobsRaw, total] = await measureAsync("employee.queue.prisma", () => prisma.$transaction([
       prisma.printJob.findMany({
         where,
         include: { customerUser: true, assignedUser: true, printer: true, files: true },
@@ -149,7 +152,7 @@ export async function listPrintQueue(input: QueueQuery) {
         take: query.pageSize,
       }),
       prisma.printJob.count({ where }),
-    ]);
+    ]));
 
     // Ensure every active job has a clear display OTP in metadata
     const jobs = jobsRaw;
