@@ -65,15 +65,6 @@ interface CustomerDashboardClientProps {
   organizationName: string;
 }
 
-function readFileAsDataUrl(file: File): Promise<string | null> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
-  });
-}
-
 export function CustomerDashboardClient({
   initialJobs,
   userEmail,
@@ -166,12 +157,9 @@ export function CustomerDashboardClient({
           for (const f of incomingFiles) {
             const pdfName = f.name.replace(/\.[^/.]+$/, "") + ".pdf";
             const actualPages = await getDocumentPageCount(f);
-            const canPersistPreview =
-              (f.type.startsWith("image/") ||
-                f.type === "application/pdf" ||
-                f.name.toLowerCase().endsWith(".pdf")) &&
-              f.size <= 4 * 1024 * 1024;
-            const previewUrl = canPersistPreview ? await readFileAsDataUrl(f) : null;
+            // Keep previews backed by rawFile/object URLs in PdfPreviewGallery. Never persist
+            // base64/data URLs or signed URLs in storageKey; it is reserved for short object paths.
+            const previewUrl = null;
 
             newFiles.push({
               id: crypto.randomUUID(),
@@ -183,7 +171,7 @@ export function CustomerDashboardClient({
               orientation: "portrait",
               rawFile: f,
               previewUrl,
-              storageKey: previewUrl,
+              storageKey: null,
             });
           }
 
@@ -284,8 +272,8 @@ export function CustomerDashboardClient({
             fileSize: f.size,
             mimeType: f.type,
             pageCount: f.pages,
-            previewUrl: f.previewUrl,
-            storageKey: f.storageKey,
+            previewUrl: null,
+            storageKey: null,
           })),
         }),
       });

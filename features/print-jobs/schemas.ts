@@ -29,14 +29,18 @@ export const createPrintJobSchema = customerUploadConfigurationSchema.extend({
   pageCount: z.coerce.number().int().positive().optional(),
   estimatedCost: z.coerce.number().nonnegative().optional(),
   fileHistory: z.string().trim().max(1000).optional().or(z.literal("")),
-  files: z.array(z.object({
-    fileName: z.string().min(1),
-    fileSize: z.number().int().positive(),
-    mimeType: z.string().min(1),
-    pageCount: z.number().int().positive().optional(),
-    previewUrl: z.string().optional().nullable(),
-    storageKey: z.string().optional().nullable()
-  })).optional()
+  files: z
+    .array(
+      z.object({
+        fileName: z.string().min(1),
+        fileSize: z.number().int().positive(),
+        mimeType: z.string().min(1),
+        pageCount: z.number().int().positive().optional(),
+        previewUrl: z.string().max(2048).optional().nullable(),
+        storageKey: z.string().max(512).optional().nullable(),
+      }),
+    )
+    .optional(),
 });
 
 export const uploadFileSchema = z.object({
@@ -49,6 +53,24 @@ export const uploadFileSchema = z.object({
     .max(100 * 1024 * 1024),
   mimeType: z.string().trim().min(3).max(120),
 });
+
+const MAX_STORAGE_KEY_LENGTH = 512;
+
+export function sanitizePrintJobStorageKey(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+
+  if (
+    !trimmed ||
+    trimmed.length > MAX_STORAGE_KEY_LENGTH ||
+    trimmed.startsWith("data:") ||
+    /^https?:\/\//i.test(trimmed)
+  ) {
+    return null;
+  }
+
+  return trimmed;
+}
 
 export type PrintJobQuery = z.infer<typeof printJobQuerySchema>;
 export type CreatePrintJobInput = z.infer<typeof createPrintJobSchema>;

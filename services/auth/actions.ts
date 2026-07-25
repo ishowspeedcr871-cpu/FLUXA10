@@ -23,7 +23,7 @@ const signUpSchema = z.object({
     .email()
     .transform((email) => email.toLowerCase()),
   password: z.string().min(1),
-  organizationId: z.string().optional(),
+  organizationId: z.string().min(1),
 });
 
 async function authenticate(formData: FormData, redirectTo: string, errorPath: string) {
@@ -99,11 +99,15 @@ async function authenticate(formData: FormData, redirectTo: string, errorPath: s
     targetRedirect = "/employee";
   } else if (portalParam === "organization" && canUserAccessPortal(user, "/organization")) {
     targetRedirect = "/organization";
-  } else if (redirectTo === "/dashboard" || redirectTo === "/" || !canUserAccessPortal(user, redirectTo)) {
+  } else if (
+    redirectTo === "/dashboard" ||
+    redirectTo === "/" ||
+    !canUserAccessPortal(user, redirectTo)
+  ) {
     targetRedirect = roleProfile.primaryPortal;
   }
 
-  const portalRole = (roleProfile.isEmployee || roleProfile.isOrgAdmin) ? "ORGANIZATION" : "CUSTOMER";
+  const portalRole = roleProfile.isEmployee || roleProfile.isOrgAdmin ? "ORGANIZATION" : "CUSTOMER";
 
   await createUserSession(user.id, portalRole);
   await createAuditLog({ actorUserId: user.id, action: "auth.login_succeeded" });
@@ -183,4 +187,3 @@ export async function signUpAction(formData: FormData) {
   await createUserSession(user.id, "CUSTOMER");
   redirect("/customer");
 }
-

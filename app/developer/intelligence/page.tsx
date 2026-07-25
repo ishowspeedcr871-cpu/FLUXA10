@@ -88,8 +88,22 @@ export default async function DeveloperIntelligencePage() {
                       <tr key={item.id}>
                         <Td>{item.rule.name}</Td>
                         <Td>{item.status}</Td>
-                        <Td>{item.matched ? "Yes" : "No"}</Td>
-                        <Td>{item.errorCode ?? "—"}</Td>
+                        <Td>
+                          {typeof item.logs === "object" &&
+                          item.logs &&
+                          !Array.isArray(item.logs) &&
+                          item.logs.matched === true
+                            ? "Yes"
+                            : "No"}
+                        </Td>
+                        <Td>
+                          {typeof item.logs === "object" &&
+                          item.logs &&
+                          !Array.isArray(item.logs) &&
+                          typeof item.logs.errorCode === "string"
+                            ? item.logs.errorCode
+                            : "—"}
+                        </Td>
                       </tr>
                     ))}
                   </tbody>

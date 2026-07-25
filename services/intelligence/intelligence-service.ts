@@ -344,8 +344,7 @@ export async function executeAutomationRules(
             ruleId: rule.id,
             printJobId: parsed.printJobId || null,
             status: "SKIPPED",
-            matched: false,
-            errorCode: "AUTOMATION_RATE_LIMITED",
+            logs: { matched: false, errorCode: "AUTOMATION_RATE_LIMITED" },
           },
         }),
       );
@@ -358,7 +357,7 @@ export async function executeAutomationRules(
         ruleId: rule.id,
         printJobId: parsed.printJobId || null,
         status: "RUNNING",
-        matched,
+        logs: { matched },
         startedAt: new Date(),
       },
     });
@@ -366,7 +365,7 @@ export async function executeAutomationRules(
       where: { id: execution.id },
       data: {
         status: "COMPLETED",
-        actionsApplied: matched ? (rule.actions as Prisma.InputJsonValue) : [],
+        logs: { matched, actionsApplied: matched ? rule.actions : [] },
         completedAt: new Date(),
       },
     });
@@ -502,15 +501,17 @@ export async function intelligentSearch(
         ? Number(b.createdAt) - Number(a.createdAt)
         : b.score - a.score,
   );
-  await prisma.searchHistory.create({
-    data: {
-      organizationId,
-      userId: actorUserId,
-      scope: parsed.scope,
-      query: parsed.q,
-      resultCount: sorted.length,
-    },
-  });
+  if (actorUserId) {
+    await prisma.searchHistory.create({
+      data: {
+        organizationId,
+        userId: actorUserId,
+        scope: parsed.scope,
+        query: parsed.q,
+        resultCount: sorted.length,
+      },
+    });
+  }
   return {
     results: sorted.slice((parsed.page - 1) * parsed.pageSize, parsed.page * parsed.pageSize),
     total: sorted.length,
@@ -525,6 +526,14 @@ export async function saveSearch(
   input: SavedSearchInput,
 ) {
   const parsed = savedSearchSchema.parse(input);
+  if (!actorUserId) {
+    throw new IntelligenceServiceError(
+      "A signed-in user is required to save searches.",
+      "AUTH_REQUIRED",
+      401,
+    );
+  }
+
   return prisma.savedSearch.create({
     data: {
       organizationId,
@@ -532,7 +541,6 @@ export async function saveSearch(
       name: parsed.name,
       scope: parsed.scope,
       query: parsed.q,
-      sort: parsed.sort,
     },
   });
 }
@@ -558,9 +566,10 @@ export async function getAiAnalyticsDashboard(organizationId: string | null) {
       }),
     ]);
   const accepted = recommendations.filter((item) => item.status === "ACCEPTED").length;
-  const activeAutomations = automations.filter(
-    (item) => item.status === "COMPLETED" && item.matched,
-  ).length;
+  const activeAutomations = automations.filter((item) => {
+    const logs = toRecord(item.logs);
+    return item.status === "COMPLETED" && logs.matched === true;
+  }).length;
   const ocrCompleted = ocr.filter((job) => job.status === "COMPLETED").length;
   const totalCost = jobs.reduce((sum, job) => sum + Number(job.estimatedCost ?? 0), 0);
   return {
@@ -603,13 +612,18 @@ export async function captureAiAnalyticsSnapshot(organizationId: string | null) 
     recommendationStats: { acceptanceRate: dashboard.metrics.recommendationAcceptanceRate },
     ocrPerformance: { completionRate: dashboard.metrics.ocrCompletionRate },
     systemHealth: { aiRequestFailures: dashboard.metrics.aiRequestFailures },
-  };
+  } satisfies Prisma.InputJsonObject;
   const existing = await prisma.aiAnalyticsSnapshot.findFirst({
     where: { organizationId, periodStart: start },
   });
-  if (existing)
-    return prisma.aiAnalyticsSnapshot.update({ where: { id: existing.id }, data: payload });
+  if (existing) {
+    return prisma.aiAnalyticsSnapshot.update({
+      where: { id: existing.id },
+      data: { metrics: payload },
+    });
+  }
+
   return prisma.aiAnalyticsSnapshot.create({
-    data: { organizationId, periodStart: start, periodEnd: end, ...payload },
+    data: { organizationId, periodStart: start, periodEnd: end, metrics: payload },
   });
 }

@@ -1,29 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createCustomerPrintJob } from "@/services/print-jobs/print-job-service";
+import { createPrintJobSchema, sanitizePrintJobStorageKey } from "@/features/print-jobs/schemas";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Create the print job
-    const job = await createCustomerPrintJob({
+    const parsed = createPrintJobSchema.parse({
       title: body.title || "Print Job",
       description: body.description || "",
-      copies: Number(body.copies || 1),
+      copies: body.copies || 1,
       color: Boolean(body.color),
-      duplex: Boolean(body.duplex !== false),
+      duplex: body.duplex !== false,
       paperSize: body.paperSize || "A4",
       orientation: body.orientation || "portrait",
       pageRange: body.pageRange || "",
       paperQuality: body.paperQuality || "standard",
       specialInstructions: body.specialInstructions || "",
-      pageCount: Number(
+      pageCount:
         body.pageCount ||
-          (Array.isArray(body.files)
-            ? body.files.reduce((a: number, f: any) => a + (Number(f.pageCount) || 1), 0)
-            : 1),
-      ),
-      estimatedCost: Number(body.estimatedCost || 0),
+        (Array.isArray(body.files)
+          ? body.files.reduce((a: number, f: any) => a + (Number(f.pageCount || f.pages) || 1), 0)
+          : 1),
+      estimatedCost: body.estimatedCost || 0,
       fileHistory: body.fileHistory || "",
       files: Array.isArray(body.files)
         ? body.files.map((f: any) => ({
@@ -31,11 +30,14 @@ export async function POST(req: NextRequest) {
             fileSize: Number(f.fileSize || f.size || 0),
             mimeType: f.mimeType || f.type || "application/pdf",
             pageCount: Number(f.pageCount || f.pages || 1),
-            previewUrl: typeof f.previewUrl === "string" ? f.previewUrl : null,
-            storageKey: typeof f.storageKey === "string" ? f.storageKey : null,
+            previewUrl: null,
+            storageKey: sanitizePrintJobStorageKey(f.storageKey),
           }))
         : undefined,
     });
+
+    // Keep the HTTP request path metadata-only; binary uploads/previews must use storage keys.
+    const job = await createCustomerPrintJob(parsed);
 
     const otpCode = job.otpCode;
 

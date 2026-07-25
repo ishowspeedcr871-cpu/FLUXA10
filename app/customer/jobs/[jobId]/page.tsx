@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,12 +8,8 @@ import { generateCustomerReleaseOtpAction } from "@/services/print-jobs/otp-serv
 import { OtpSection } from "@/components/customer/otp-section";
 import { PrintReceiptButton } from "@/components/customer/print-button";
 import { FilePreviewItem } from "@/components/customer/file-preview-item";
-import {
-  FileText,
-  Clock,
-  ArrowLeft,
-  Receipt,
-} from "lucide-react";
+import type { Prisma } from "@prisma/client";
+import { FileText, Clock, ArrowLeft, Receipt } from "lucide-react";
 
 export default async function CustomerJobDetailsPage({
   params,
@@ -30,13 +26,23 @@ export default async function CustomerJobDetailsPage({
   const isCompleted = job.status === "COMPLETED" || job.status === "COLLECTED";
   const costVal = Number(job.estimatedCost || 0);
   const otpCode = job.otpCode || urlParams.otp_code || "";
+  const metadata =
+    job.metadata && typeof job.metadata === "object" && !Array.isArray(job.metadata)
+      ? (job.metadata as Prisma.JsonObject)
+      : {};
+  const uploadConfiguration =
+    metadata.uploadConfiguration &&
+    typeof metadata.uploadConfiguration === "object" &&
+    !Array.isArray(metadata.uploadConfiguration)
+      ? (metadata.uploadConfiguration as Record<string, unknown>)
+      : {};
 
   // Helper to map DB status to simplified consumer-facing timeline steps
   const getTimelineSteps = () => {
     const dbStatus = job.status;
-    
-    let currentStep = 0; 
-    
+
+    let currentStep = 0;
+
     if (["QUEUED", "ASSIGNED"].includes(dbStatus)) {
       currentStep = 1;
     } else if (dbStatus === "PRINTING") {
@@ -117,26 +123,39 @@ export default async function CustomerJobDetailsPage({
                 {job.description && (
                   <p className="text-sm text-muted-foreground">{job.description}</p>
                 )}
-                
+
                 <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 mt-4 text-xs text-muted-foreground">
                   <div>
-                    <span className="block text-[10px] uppercase font-semibold text-muted-foreground">COPIES</span>
-                    <strong className="text-white text-sm mt-0.5 block">{job.copies} Copy/Copies</strong>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] uppercase font-semibold text-muted-foreground">COLOR MODE</span>
-                    <strong className="text-white text-sm mt-0.5 block">{job.color ? "Full Color" : "Black & White"}</strong>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] uppercase font-semibold text-muted-foreground">PAPER CONFIGURATION</span>
+                    <span className="block text-[10px] uppercase font-semibold text-muted-foreground">
+                      COPIES
+                    </span>
                     <strong className="text-white text-sm mt-0.5 block">
-                      {String(job.metadata?.uploadConfiguration?.paperSize || "A4")} · {job.duplex ? "Duplex" : "Simplex"}
+                      {job.copies} Copy/Copies
                     </strong>
                   </div>
                   <div>
-                    <span className="block text-[10px] uppercase font-semibold text-muted-foreground">ORIENTATION</span>
+                    <span className="block text-[10px] uppercase font-semibold text-muted-foreground">
+                      COLOR MODE
+                    </span>
+                    <strong className="text-white text-sm mt-0.5 block">
+                      {job.color ? "Full Color" : "Black & White"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] uppercase font-semibold text-muted-foreground">
+                      PAPER CONFIGURATION
+                    </span>
+                    <strong className="text-white text-sm mt-0.5 block">
+                      {String(uploadConfiguration.paperSize || "A4")} ·{" "}
+                      {job.duplex ? "Duplex" : "Simplex"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] uppercase font-semibold text-muted-foreground">
+                      ORIENTATION
+                    </span>
                     <strong className="text-white text-sm mt-0.5 block capitalize">
-                      {String(job.metadata?.uploadConfiguration?.orientation || "portrait")}
+                      {String(uploadConfiguration.orientation || "portrait")}
                     </strong>
                   </div>
                 </div>
@@ -158,14 +177,13 @@ export default async function CustomerJobDetailsPage({
                   {steps?.map((step) => {
                     return (
                       <div key={step.label} className="relative">
-
                         <div
                           className={`absolute -left-[31px] top-1.5 size-[11px] rounded-full border-2 transition-all duration-300 ${
                             step.completed
                               ? "bg-success border-success scale-110 shadow-lg shadow-success/20"
                               : step.active
-                              ? "bg-accent-cyan border-accent-cyan scale-125 shadow-lg shadow-accent-cyan/35 animate-pulse"
-                              : "bg-black border-white/20"
+                                ? "bg-accent-cyan border-accent-cyan scale-125 shadow-lg shadow-accent-cyan/35 animate-pulse"
+                                : "bg-black border-white/20"
                           }`}
                         />
 
@@ -215,9 +233,9 @@ export default async function CustomerJobDetailsPage({
           </div>
 
           <div className="space-y-6">
-            <OtpSection 
-              jobId={job.id} 
-              isCompleted={isCompleted} 
+            <OtpSection
+              jobId={job.id}
+              isCompleted={isCompleted}
               initialOtp={otpCode}
               otpHistory={job.otpHistory}
               generateAction={generateCustomerReleaseOtpAction}
@@ -238,7 +256,9 @@ export default async function CustomerJobDetailsPage({
                   <div className="text-center border-b border-dashed border-white/10 pb-3 space-y-1">
                     <h5 className="font-sans font-bold text-white text-sm">FLUXA PRINTING</h5>
                     <p className="text-[10px]">Instant Cloud Release Network</p>
-                    <p className="text-[9px] text-muted-foreground/60">{new Date(job.createdAt).toLocaleString()}</p>
+                    <p className="text-[9px] text-muted-foreground/60">
+                      {new Date(job.createdAt).toLocaleString()}
+                    </p>
                   </div>
 
                   <div className="space-y-1.5">
@@ -252,7 +272,7 @@ export default async function CustomerJobDetailsPage({
                     </div>
                     <div className="flex justify-between">
                       <span>Paper size:</span>
-                      <span>{String(job.metadata?.uploadConfiguration?.paperSize || "A4")}</span>
+                      <span>{String(uploadConfiguration.paperSize || "A4")}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Copies:</span>
