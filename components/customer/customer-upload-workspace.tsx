@@ -90,7 +90,7 @@ export function CustomerUploadWorkspace({
           pages,
           rawFile: file,
           previewUrl,
-          storageKey: previewUrl,
+          storageKey: null,
         };
       }),
     );

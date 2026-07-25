@@ -183,7 +183,7 @@ export function CustomerDashboardClient({
               orientation: "portrait",
               rawFile: f,
               previewUrl,
-              storageKey: previewUrl,
+              storageKey: null,
             });
           }
 
@@ -285,7 +285,7 @@ export function CustomerDashboardClient({
             mimeType: f.type,
             pageCount: f.pages,
             previewUrl: f.previewUrl,
-            storageKey: f.storageKey,
+            storageKey: null,
           })),
         }),
       });

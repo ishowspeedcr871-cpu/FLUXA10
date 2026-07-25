@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createCustomerPrintJob } from "@/services/print-jobs/print-job-service";
 import { createPrintJobSchema } from "@/features/print-jobs/schemas";
+import { normalizePrintJobStorageKey } from "@/features/print-jobs/storage-keys";
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
             mimeType: f.mimeType || f.type || "application/pdf",
             pageCount: Number(f.pageCount || f.pages || 1),
             previewUrl: null,
-            storageKey: typeof f.storageKey === "string" ? f.storageKey : null,
+            storageKey: normalizePrintJobStorageKey(f.storageKey),
           }))
         : undefined,
     });
