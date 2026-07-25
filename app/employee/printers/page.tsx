@@ -8,7 +8,7 @@ import { AlertCircle } from "lucide-react";
 
 export default async function PrintersPage() {
   try {
-    const { organization } = await requireEmployeeContext();
+    const { user, membership, organization } = await requireEmployeeContext();
 
     // 1. Fetch registered printers for this organization
     const printers = await prisma.printer.findMany({
@@ -35,7 +35,7 @@ export default async function PrintersPage() {
     const serializedJobs = serializeData(jobs);
 
     return (
-      <EmployeePortalLayout>
+      <EmployeePortalLayout profile={{ user: { name: user.name, email: user.email }, organization: { name: organization.name }, role: { name: membership.role.name } }}>
         <EmployeePrintersClient 
           initialPrinters={serializedPrinters} 
           initialJobs={serializedJobs}

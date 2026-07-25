@@ -15,7 +15,7 @@ export default async function EmployeeProfilePage() {
     const serializedOrganization = serializeData(organization);
 
     return (
-      <EmployeePortalLayout>
+      <EmployeePortalLayout profile={{ user: { name: user.name, email: user.email }, organization: { name: organization.name }, role: { name: membership.role.name } }}>
         <EmployeeProfileClient
           user={serializedUser}
           membership={serializedMembership}

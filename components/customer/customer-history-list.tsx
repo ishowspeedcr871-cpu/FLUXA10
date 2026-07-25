@@ -193,7 +193,7 @@ export function CustomerHistoryList({ jobs }: CustomerHistoryListProps) {
                           </span>
                         </div>
                         <p className="text-[10px] text-muted-foreground mt-0.5">
-                          {job.shopName || "Apex Digital"}
+                          {job.shopName}
                         </p>
                       </td>
                       <td className="px-6 py-5">

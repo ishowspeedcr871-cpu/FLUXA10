@@ -69,7 +69,7 @@ export async function listCustomerPrintJobs(input: PrintJobQuery) {
   const [jobs, total] = await prisma.$transaction([
     prisma.printJob.findMany({
       where,
-      include: { files: true },
+      include: { files: true, organization: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
       skip,
       take: query.pageSize,

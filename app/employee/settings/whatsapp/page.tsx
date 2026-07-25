@@ -7,14 +7,14 @@ import { AlertCircle } from "lucide-react";
 
 export default async function WhatsappSettingsPage() {
   try {
-    const { organization } = await getEmployeeProfile();
+    const { user, membership, organization } = await getEmployeeProfile();
 
     const orgSettings = await prisma.organizationSettings.findUnique({
       where: { organizationId: organization.id }
     });
 
     return (
-      <EmployeePortalLayout>
+      <EmployeePortalLayout profile={{ user: { name: user.name, email: user.email }, organization: { name: organization.name }, role: { name: membership.role.name } }}>
         <WhatsappSettingsClient initialNumber={orgSettings?.supportPhone || null} />
       </EmployeePortalLayout>
     );

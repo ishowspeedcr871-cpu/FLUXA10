@@ -14,8 +14,8 @@ export default async function CustomerHistoryPage() {
     color: job.color,
     estimatedCost: Number(job.estimatedCost || 0),
     createdAt: job.createdAt.toISOString(),
-    otpCode: job.otpCode,
-    shopName: job.shopName,
+    otpCode: job.otpCode || undefined,
+    shopName: job.organization.name,
   }));
   
   return (

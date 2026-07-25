@@ -28,9 +28,14 @@ const employeeRoutes = [
 
 interface EmployeePortalLayoutProps {
   children: React.ReactNode;
+  profile?: {
+    user: { name: string | null; email: string };
+    organization: { name: string };
+    role: { name: string };
+  };
 }
 
-export function EmployeePortalLayout({ children }: EmployeePortalLayoutProps) {
+export function EmployeePortalLayout({ children, profile }: EmployeePortalLayoutProps) {
   const pathname = usePathname() || "";
   const router = useRouter();
 
@@ -42,6 +47,11 @@ export function EmployeePortalLayout({ children }: EmployeePortalLayoutProps) {
     if (pathname.includes("/settings")) return "settings";
     return "dashboard";
   }, [pathname]);
+
+  const displayName = profile?.user.name || profile?.user.email || "Employee";
+  const displayEmail = profile?.user.email || "";
+  const organizationName = profile?.organization.name || "Active Workspace";
+  const roleName = profile?.role.name || "Team Member";
 
   const navItems = [
     { id: "dashboard", label: "Queue", path: "/employee", icon: LayoutGrid },
@@ -71,7 +81,7 @@ export function EmployeePortalLayout({ children }: EmployeePortalLayoutProps) {
             </Link>
             <div className="mt-6 p-3 bg-white/5 border border-white/10 rounded-xl">
               <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Workspace</h3>
-              <h2 className="text-xs font-bold text-white truncate mt-0.5">Apex Digital Print</h2>
+              <h2 className="text-xs font-bold text-white truncate mt-0.5">{organizationName}</h2>
             </div>
           </div>
 
@@ -111,9 +121,9 @@ export function EmployeePortalLayout({ children }: EmployeePortalLayoutProps) {
               </Link>
               <div className="flex-1 min-w-0">
                 <Link href="/employee/profile">
-                  <h4 className="text-xs font-bold text-white truncate hover:text-accent-cyan transition-colors cursor-pointer">Apex Staff</h4>
+                  <h4 className="text-xs font-bold text-white truncate hover:text-accent-cyan transition-colors cursor-pointer">{displayName}</h4>
                 </Link>
-                <p className="text-[10px] text-slate-400 font-medium truncate">fluxa1409@gmail.com</p>
+                <p className="text-[10px] text-slate-400 font-medium truncate">{displayEmail}</p>
               </div>
               
               <form action={logoutAction} className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -140,7 +150,7 @@ export function EmployeePortalLayout({ children }: EmployeePortalLayoutProps) {
         <header className="md:hidden px-5 pt-6 pb-4 flex flex-col z-40 bg-black/40 border-b border-white/5">
           <div className="mb-4">
             <h3 className="text-sm font-medium text-muted-foreground">Welcome back,</h3>
-            <h2 className="text-sm font-bold text-white">Apex Digital Print Solutions!</h2>
+            <h2 className="text-sm font-bold text-white">{organizationName}!</h2>
           </div>
           
           <div className="flex items-center justify-between">
@@ -180,15 +190,15 @@ export function EmployeePortalLayout({ children }: EmployeePortalLayoutProps) {
               <h1 className="text-lg font-black tracking-wider uppercase text-white">
                 {navItems.find(item => item.id === currentNav)?.label || "Dashboard"}
               </h1>
-              <p className="text-xs text-slate-400 mt-0.5">Apex Digital Workshop Portal</p>
+              <p className="text-xs text-slate-400 mt-0.5">{organizationName} Portal</p>
             </div>
 
             <div className="flex items-center gap-4">
               <NotificationBell portalType="employee" />
               <div className="h-6 w-px bg-white/10" />
               <div className="text-right">
-                <h4 className="text-xs font-bold text-white">Apex Digital Staff</h4>
-                <p className="text-[10px] text-accent-cyan font-semibold uppercase tracking-wider">Live Connection</p>
+                <h4 className="text-xs font-bold text-white">{displayName}</h4>
+                <p className="text-[10px] text-accent-cyan font-semibold uppercase tracking-wider">{roleName}</p>
               </div>
             </div>
           </header>

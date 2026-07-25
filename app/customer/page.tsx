@@ -46,7 +46,7 @@ export default async function CustomerDashboardPage() {
     estimatedCost: Number(job.estimatedCost || 0),
     createdAt: job.createdAt.toISOString(),
     otpCode: job.otpCode || undefined,
-    shopName: "Apex Digital",
+    shopName: organization.name,
   }));
 
   return (
@@ -60,6 +60,7 @@ export default async function CustomerDashboardPage() {
           historyCount={0}
           whatsappNumber={whatsappNumber}
           orgSettings={orgSettings}
+          organizationName={organization.name}
         />
       </div>
     </CustomerPortalLayout>
