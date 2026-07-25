@@ -178,7 +178,7 @@ export function EmployeePrintReviewModal({
                 <RealPdfCanvas
                   fileName={job?.title || "Document.pdf"}
                   rawFile={job?.files?.[0]?.rawFile}
-                  fileUrl={job?.files?.[0]?.url}
+                  fileUrl={job?.files?.[0]?.previewUrl ?? job?.files?.[0]?.storageKey}
                   pageNum={1}
                   scale={0.5}
                   className="max-h-[58vh] sm:max-h-[320px] w-auto shadow-2xl"

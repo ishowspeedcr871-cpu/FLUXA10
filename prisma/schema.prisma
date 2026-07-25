@@ -461,6 +461,7 @@ model PrintJob {
   updatedAt              DateTime                @updatedAt
 
   @@index([organizationId, status, createdAt])
+  @@index([organizationId, status, completedAt])
   @@index([customerUserId, createdAt])
   @@index([assignedUserId, status])
   @@index([printerId, status])

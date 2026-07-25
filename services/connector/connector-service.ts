@@ -1,4 +1,5 @@
 import { prisma } from "@/database/client";
+import { completedAtForStatus } from "@/services/print-jobs/status-utils";
 import { z } from "zod";
 import { upsertPrinterFromDiscovery, updatePrinterTelemetry } from "@/services/printers/printer-service";
 import { randomBytes } from "node:crypto";
@@ -114,7 +115,7 @@ export async function updatePrintJobStatusFromConnector(organizationId: string, 
     where: { id: jobId },
     data: {
       status,
-      processingCompletedAt: new Date(),
+      completedAt: completedAtForStatus(status),
       events: {
         create: {
           toStatus: status,

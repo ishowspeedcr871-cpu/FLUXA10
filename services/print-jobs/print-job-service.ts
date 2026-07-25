@@ -8,6 +8,7 @@ import { estimateUploadCost } from "@/features/customer/upload-schemas";
 import { requireCustomerContext } from "@/services/customer/customer-service";
 import { generateOtpCode, hashOtp, OTP_TTL_MINUTES } from "@/services/print-jobs/otp-utils";
 import { createNotification } from "@/services/notifications/notification-service";
+import { completedAtForStatus } from "@/services/print-jobs/status-utils";
 
 const lifecycle: PrintJobStatus[] = [
   "DRAFT",
@@ -180,31 +181,33 @@ export async function createCustomerPrintJob(input: CreatePrintJobInput) {
       } : undefined,
     },
   });
-  await createAuditLog({
-    organizationId: organization.id,
-    actorUserId: session.userId,
-    action: "print_job.created",
-    entityType: "PrintJob",
-    entityId: job.id,
-  });
-  await createNotification({
-    organizationId: organization.id,
-    audience: "ORGANIZATION",
-    type: "NEW_JOB",
-    title: "New print job submitted",
-    message: `${session.user.email} created ${job.title}.`,
-    entityType: "PrintJob",
-    entityId: job.id,
-  });
-  await createNotification({
-    organizationId: organization.id,
-    userId: session.userId,
-    type: "NEW_JOB",
-    title: "Document Submitted",
-    message: `Your document "${job.title}" has been successfully submitted for printing.`,
-    entityType: "PrintJob",
-    entityId: job.id,
-  });
+  await Promise.all([
+    createAuditLog({
+      organizationId: organization.id,
+      actorUserId: session.userId,
+      action: "print_job.created",
+      entityType: "PrintJob",
+      entityId: job.id,
+    }),
+    createNotification({
+      organizationId: organization.id,
+      audience: "ORGANIZATION",
+      type: "NEW_JOB",
+      title: "New print job submitted",
+      message: `${session.user.email} created ${job.title}.`,
+      entityType: "PrintJob",
+      entityId: job.id,
+    }),
+    createNotification({
+      organizationId: organization.id,
+      userId: session.userId,
+      type: "NEW_JOB",
+      title: "Document Submitted",
+      message: `Your document "${job.title}" has been successfully submitted for printing.`,
+      entityType: "PrintJob",
+      entityId: job.id,
+    }),
+  ]);
   return job;
 }
 
@@ -218,7 +221,7 @@ export async function transitionPrintJob(jobId: string, toStatus: PrintJobStatus
     where: { id: current.id },
     data: {
       status: toStatus,
-      completedAt: toStatus === "COMPLETED" ? new Date() : current.completedAt,
+      completedAt: completedAtForStatus(toStatus, current.completedAt),
       collectedAt: toStatus === "COLLECTED" ? new Date() : current.collectedAt,
       events: {
         create: { actorUserId: session.userId, fromStatus: current.status, toStatus, note },

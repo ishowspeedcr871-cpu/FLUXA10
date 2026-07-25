@@ -66,8 +66,7 @@ export function CustomerUploadWorkspace({
   async function addFiles(files: FileList | null) {
     if (!files) return;
     const incoming = Array.from(files);
-    const next: UploadQueueItem[] = [];
-    for (const file of incoming) {
+    const next = await Promise.all(incoming.map(async (file): Promise<UploadQueueItem> => {
       const isDocx = file.name.endsWith(".docx");
       const isPptx = file.name.endsWith(".pptx");
       const accepted = [
@@ -79,11 +78,16 @@ export function CustomerUploadWorkspace({
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       ].includes(file.type) || isDocx || isPptx;
 
-      const pages = accepted ? await getDocumentPageCount(file) : 1;
-      const canPersistPreview = accepted && (file.type.startsWith("image/") || file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) && file.size <= 4 * 1024 * 1024;
-      const previewUrl = canPersistPreview ? await readFileAsDataUrl(file) : null;
+      const [pages, previewUrl] = accepted
+        ? await Promise.all([
+            getDocumentPageCount(file),
+            file.type.startsWith("image/") || file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+              ? readFileAsDataUrl(file)
+              : Promise.resolve(null),
+          ])
+        : [1, null];
 
-      next.push({
+      return {
         id: crypto.randomUUID(),
         name: file.name,
         size: file.size,
@@ -94,8 +98,8 @@ export function CustomerUploadWorkspace({
         rawFile: file,
         previewUrl,
         storageKey: previewUrl,
-      });
-    }
+      };
+    }));
 
     // Automatically set form title based on first accepted file if not already set
     const firstAccepted = next.find((item) => item.status === "accepted");
