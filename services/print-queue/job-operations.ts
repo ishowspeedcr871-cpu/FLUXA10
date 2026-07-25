@@ -11,6 +11,7 @@ import {
 import { createAuditLog } from "@/services/audit/log";
 import { createNotification } from "@/services/notifications/notification-service";
 import { generateCollectionOtp } from "@/services/print-jobs/otp-service";
+import { completedAtForStatus } from "@/services/print-jobs/status-utils";
 
 async function recordOperation(
   jobId: string,
@@ -42,6 +43,7 @@ async function recordOperation(
             ? null
             : current.pausedAt,
       readyAt: toStatus === "READY" ? now : current.readyAt,
+      completedAt: completedAtForStatus(toStatus, current.completedAt, now),
       cancelledAt: toStatus === "CANCELLED" ? now : current.cancelledAt,
       events: {
         create: { actorUserId: session.userId, fromStatus: current.status, toStatus, note },

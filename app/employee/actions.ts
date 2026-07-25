@@ -6,6 +6,7 @@ import { serializeData } from "@/lib/serialization";
 import { prisma } from "@/database/client";
 import { getEmployeeProfile, requireEmployeeContext } from "@/services/employee/employee-service";
 import { hashOtp, normalizeOtp, OTP_DIGITS } from "@/services/print-jobs/otp-utils";
+import { completedAtForStatus } from "@/services/print-jobs/status-utils";
 
 export async function fetchLiveQueue(filters?: { status?: string; priority?: string; q?: string }) {
   const result = await listPrintQueue({
@@ -40,7 +41,7 @@ export async function verifyOtpForReviewAction(otp: string) {
         expiresAt: { gt: now },
         printJob: { organizationId: organization.id },
       },
-      select: { id: true, printJobId: true },
+      select: { id: true, printJobId: true, printJob: { select: { id: true, status: true } } },
     });
 
     const matchingJob = foundOtp
@@ -52,19 +53,12 @@ export async function verifyOtpForReviewAction(otp: string) {
             otpGeneratedAt: { gt: new Date(now.getTime() - 60 * 60 * 1000) },
             OR: [{ otpCodeHash: otpHash }, { otpCode: cleanOtp }],
           },
-          select: { id: true },
+          select: { id: true, status: true },
         });
 
-    const targetJobId = foundOtp?.printJobId || matchingJob?.id;
-    if (!targetJobId) {
-      return { success: false, error: "Invalid or expired collection OTP." };
-    }
-
-    const currentJob = await prisma.printJob.findFirst({
-      where: { id: targetJobId, organizationId: organization.id },
-      select: { id: true, status: true },
-    });
-    if (!currentJob) {
+    const currentJob = foundOtp?.printJob ?? matchingJob;
+    const targetJobId = currentJob?.id;
+    if (!targetJobId || !currentJob) {
       return { success: false, error: "Invalid or expired collection OTP." };
     }
 
@@ -275,7 +269,7 @@ export async function updateJobStatusAction(jobId: string, status: string) {
       where: { id: jobId, organizationId: organization.id },
       data: {
         status: status as any,
-        completedAt: status === "COMPLETED" ? new Date() : undefined,
+        completedAt: completedAtForStatus(status),
         events: {
           create: {
             actorUserId: session.userId,

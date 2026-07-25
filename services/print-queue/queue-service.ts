@@ -4,6 +4,7 @@ import type { QueueQuery } from "@/features/print-queue/schemas";
 import { queueQuerySchema } from "@/features/print-queue/schemas";
 import { requireQueueAccess } from "@/services/employee/employee-service";
 import { hashOtp, normalizeOtp, OTP_DIGITS } from "@/services/print-jobs/otp-utils";
+import { getActiveQueueVisibilityWhere } from "@/services/print-jobs/status-utils";
 
 export async function getEmployeeDashboard() {
   const { session, organization } = await requireQueueAccess();
@@ -13,7 +14,7 @@ export async function getEmployeeDashboard() {
       where: {
         organizationId: organization.id,
         assignedUserId: session.userId,
-        status: { notIn: ["COMPLETED", "CANCELLED", "FAILED"] },
+        ...getActiveQueueVisibilityWhere(),
       },
     }),
     prisma.printJob.count({ where: { organizationId: organization.id, status: "PRINTING" } }),
@@ -22,7 +23,7 @@ export async function getEmployeeDashboard() {
       where: {
         organizationId: organization.id,
         priority: "URGENT",
-        status: { notIn: ["COMPLETED", "CANCELLED", "FAILED"] },
+        ...getActiveQueueVisibilityWhere(),
       },
     }),
   ]);
@@ -120,9 +121,10 @@ export async function listPrintQueue(input: QueueQuery, context?: QueueAccessCon
         { otpHistory: { some: { status: "ACTIVE" as const, expiresAt: { gt: new Date() } } } },
       ],
     };
+    const activeQueueVisibility = getActiveQueueVisibilityWhere();
     const where = {
       organizationId: organization.id,
-      ...activeOtpVisibility,
+      AND: [activeOtpVisibility, activeQueueVisibility],
       ...(query.status === "all" ? {} : { status: query.status }),
       ...(query.priority === "all" ? {} : { priority: query.priority }),
       ...(query.assigned === "mine"
@@ -189,7 +191,7 @@ export async function listAssignedJobs() {
     where: {
       organizationId: organization.id,
       assignedUserId: session.userId,
-      status: { notIn: ["COMPLETED", "CANCELLED", "FAILED"] },
+      ...getActiveQueueVisibilityWhere(),
     },
     include: { customerUser: true, printer: true, files: true },
     orderBy: [{ priority: "desc" }, { createdAt: "asc" }],

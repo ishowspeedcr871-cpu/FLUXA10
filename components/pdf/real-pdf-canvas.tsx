@@ -32,15 +32,38 @@ export function RealPdfCanvas({
   onClick,
 }: PdfCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [rendered, setRendered] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "240px" },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [fileName, pageNum]);
+
+  useEffect(() => {
+    if (!isVisible) return;
+
     let isCancelled = false;
 
     async function renderPage() {
       if (!canvasRef.current) return;
       setLoading(true);
+      setRendered(false);
 
       try {
         // 1. Handle Images
@@ -97,7 +120,7 @@ export function RealPdfCanvas({
         // 2. Handle PDF
         let pdfSource: any = null;
         if (rawFile) {
-          pdfSource = await rawFile.arrayBuffer();
+          pdfSource = new Uint8Array(await rawFile.arrayBuffer());
         } else if (fileUrl) {
           pdfSource = fileUrl;
         }
@@ -168,10 +191,11 @@ export function RealPdfCanvas({
     return () => {
       isCancelled = true;
     };
-  }, [fileName, rawFile, fileUrl, pageNum, scale]);
+  }, [fileName, rawFile, fileUrl, pageNum, scale, isVisible]);
 
   return (
     <div
+      ref={containerRef}
       onClick={onClick}
       className={`relative flex items-center justify-center bg-white rounded-xl overflow-hidden shadow-md border border-slate-200 group-hover:border-cyan-400 transition-all ${className}`}
     >
