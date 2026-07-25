@@ -2,6 +2,7 @@ import type { PrintJobStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { prisma } from "@/database/client";
 import { createPrintJobSchema, printJobQuerySchema } from "@/features/print-jobs/schemas";
+import { normalizePrintJobStorageKey } from "@/features/print-jobs/storage-keys";
 import type { CreatePrintJobInput, PrintJobQuery } from "@/features/print-jobs/schemas";
 import { createAuditLog } from "@/services/audit/log";
 import { estimateUploadCost } from "@/features/customer/upload-schemas";
@@ -173,7 +174,7 @@ export async function createCustomerPrintJob(input: CreatePrintJobInput) {
           fileName: f.fileName,
           fileSize: f.fileSize,
           mimeType: f.mimeType,
-          storageKey: f.storageKey || null,
+          storageKey: normalizePrintJobStorageKey(f.storageKey),
           previewUrl: f.previewUrl || null,
           status: "UPLOADED",
           progress: 100
