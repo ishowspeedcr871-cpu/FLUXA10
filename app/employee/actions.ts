@@ -33,71 +33,78 @@ export async function verifyOtpForReviewAction(otp: string) {
     const now = new Date();
     const otpHash = hashOtp(cleanOtp);
 
-    const result = await prisma.$transaction(async (tx) => {
-      const foundOtp = await tx.printJobOtp.findFirst({
-        where: {
-          codeHash: otpHash,
-          status: "ACTIVE",
-          expiresAt: { gt: now },
-          printJob: { organizationId: organization.id },
-        },
-        select: { id: true, printJobId: true },
-      });
+    const foundOtp = await prisma.printJobOtp.findFirst({
+      where: {
+        codeHash: otpHash,
+        status: "ACTIVE",
+        expiresAt: { gt: now },
+        printJob: { organizationId: organization.id },
+      },
+      select: { id: true, printJobId: true },
+    });
 
-      const matchingJob = foundOtp
-        ? null
-        : await tx.printJob.findFirst({
-            where: {
-              organizationId: organization.id,
-              status: { notIn: ["COMPLETED", "CANCELLED", "FAILED"] },
-              otpGeneratedAt: { gt: new Date(now.getTime() - 60 * 60 * 1000) },
-              OR: [{ otpCodeHash: otpHash }, { otpCode: cleanOtp }],
-            },
-            select: { id: true },
-          });
-
-      const targetJobId = foundOtp?.printJobId || matchingJob?.id;
-      if (!targetJobId) return null;
-
-      const job = await tx.printJob.findFirst({
-        where: { id: targetJobId, organizationId: organization.id },
-        include: {
-          customerUser: true,
-          files: true,
-          printer: true,
-        },
-      });
-      if (!job) return null;
-
-      const updates: Promise<unknown>[] = [];
-      if (foundOtp) {
-        updates.push(tx.printJobOtp.update({
-          where: { id: foundOtp.id },
-          data: { status: "VERIFIED", verifiedAt: now, verifiedByUserId: session.userId },
-        }));
-      }
-
-      if (["DRAFT", "QUEUED", "OTP_GENERATED", "READY"].includes(job.status)) {
-        updates.push(tx.printJob.update({
-          where: { id: job.id },
-          data: {
-            status: "OTP_VERIFIED",
-            events: {
-              create: {
-                fromStatus: job.status,
-                toStatus: "OTP_VERIFIED",
-                actorUserId: session.userId,
-                note: "OTP successfully verified by employee. Job is now ready for review.",
-              },
-            },
+    const matchingJob = foundOtp
+      ? null
+      : await prisma.printJob.findFirst({
+          where: {
+            organizationId: organization.id,
+            status: { notIn: ["COMPLETED", "CANCELLED", "FAILED"] },
+            otpGeneratedAt: { gt: new Date(now.getTime() - 60 * 60 * 1000) },
+            OR: [{ otpCodeHash: otpHash }, { otpCode: cleanOtp }],
           },
-        }));
-        job.status = "OTP_VERIFIED";
-      }
+          select: { id: true },
+        });
 
-      await Promise.all(updates);
-      return job;
-    }, { timeout: 2500 });
+    const targetJobId = foundOtp?.printJobId || matchingJob?.id;
+    if (!targetJobId) {
+      return { success: false, error: "Invalid or expired collection OTP." };
+    }
+
+    const currentJob = await prisma.printJob.findFirst({
+      where: { id: targetJobId, organizationId: organization.id },
+      select: { id: true, status: true },
+    });
+    if (!currentJob) {
+      return { success: false, error: "Invalid or expired collection OTP." };
+    }
+
+    await prisma.$transaction([
+      ...(foundOtp
+        ? [
+            prisma.printJobOtp.update({
+              where: { id: foundOtp.id },
+              data: { status: "VERIFIED", verifiedAt: now, verifiedByUserId: session.userId },
+            }),
+          ]
+        : []),
+      ...(["DRAFT", "QUEUED", "OTP_GENERATED", "READY"].includes(currentJob.status)
+        ? [
+            prisma.printJob.update({
+              where: { id: currentJob.id },
+              data: {
+                status: "OTP_VERIFIED",
+                events: {
+                  create: {
+                    fromStatus: currentJob.status,
+                    toStatus: "OTP_VERIFIED",
+                    actorUserId: session.userId,
+                    note: "OTP successfully verified by employee. Job is now ready for review.",
+                  },
+                },
+              },
+            }),
+          ]
+        : []),
+    ]);
+
+    const result = await prisma.printJob.findFirst({
+      where: { id: targetJobId, organizationId: organization.id },
+      include: {
+        customerUser: true,
+        files: true,
+        printer: true,
+      },
+    });
 
     if (!result) {
       return { success: false, error: "Invalid or expired collection OTP." };
@@ -194,38 +201,44 @@ export async function releaseJobWithUpdatedSettingsAction(
       }
     }
 
-    // If we have a final printer, set state to PRINTING and printer status to BUSY
-    let targetStatus: "PRINTING" | "WAITING_FOR_PRINTER" = "WAITING_FOR_PRINTER";
-    if (finalPrinterId) {
-      targetStatus = "PRINTING";
-      await prisma.printer.update({
-        where: { id: finalPrinterId },
-        data: { status: "BUSY" },
-      });
-    }
+    // If we have a final printer, set state to PRINTING and atomically mark it busy with the job update.
+    const targetStatus: "PRINTING" | "WAITING_FOR_PRINTER" = finalPrinterId
+      ? "PRINTING"
+      : "WAITING_FOR_PRINTER";
+    const now = new Date();
 
-    // Update job
-    const updatedJob = await prisma.printJob.update({
-      where: { id: jobId },
-      data: {
-        color: updatedSettings.color !== undefined ? updatedSettings.color : job.color,
-        copies: updatedSettings.copies !== undefined ? updatedSettings.copies : job.copies,
-        duplex: updatedSettings.duplex !== undefined ? updatedSettings.duplex : job.duplex,
-        estimatedCost: newEstimatedCost,
-        printerId: finalPrinterId || null,
-        status: targetStatus,
-        processingStartedAt: targetStatus === "PRINTING" ? new Date() : null,
-        metadata: currentMeta,
-        events: {
-          create: {
-            fromStatus: job.status,
-            toStatus: targetStatus,
-            actorUserId: session.userId,
-            note: `Job released after review. Changes made: Color=${updatedSettings.color}, Copies=${updatedSettings.copies}, Duplex=${updatedSettings.duplex}, Printer=${finalPrinterId}. Reason: ${reasonForModification || "None"}`,
+    const releaseUpdates = await prisma.$transaction([
+      ...(finalPrinterId
+        ? [
+            prisma.printer.update({
+              where: { id: finalPrinterId },
+              data: { status: "BUSY" },
+            }),
+          ]
+        : []),
+      prisma.printJob.update({
+        where: { id: jobId },
+        data: {
+          color: updatedSettings.color !== undefined ? updatedSettings.color : job.color,
+          copies: updatedSettings.copies !== undefined ? updatedSettings.copies : job.copies,
+          duplex: updatedSettings.duplex !== undefined ? updatedSettings.duplex : job.duplex,
+          estimatedCost: newEstimatedCost,
+          printerId: finalPrinterId || null,
+          status: targetStatus,
+          processingStartedAt: targetStatus === "PRINTING" ? now : null,
+          metadata: currentMeta,
+          events: {
+            create: {
+              fromStatus: job.status,
+              toStatus: targetStatus,
+              actorUserId: session.userId,
+              note: `Job released after review. Changes made: Color=${updatedSettings.color}, Copies=${updatedSettings.copies}, Duplex=${updatedSettings.duplex}, Printer=${finalPrinterId}. Reason: ${reasonForModification || "None"}`,
+            },
           },
         },
-      },
-    });
+      }),
+    ]);
+    const updatedJob = releaseUpdates[releaseUpdates.length - 1];
 
     return {
       success: true,

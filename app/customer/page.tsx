@@ -7,7 +7,8 @@ import { prisma } from "@/database/client";
 
 export default async function CustomerDashboardPage() {
   // Enforce customer login and retrieve active user session
-  const { user, organization } = await requireCustomerContext();
+  const customerContext = await requireCustomerContext();
+  const { user, organization } = customerContext;
   const userEmail = user?.email || null;
 
   // Retrieve independent page data concurrently; getCurrentSession is request-cached.
@@ -15,7 +16,7 @@ export default async function CustomerDashboardPage() {
   let orgSettings;
   try {
     [dashboardData, orgSettings] = await Promise.all([
-      getCustomerDashboard(),
+      getCustomerDashboard(customerContext),
       prisma.organizationSettings.findUnique({ where: { organizationId: organization.id } }),
     ]);
   } catch (error: any) {

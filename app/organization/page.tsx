@@ -1,28 +1,20 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { OrganizationPortalLayout } from "@/layouts/organization-portal-layout";
-import { requireOrganizationOrRedirect } from "@/services/organizations/actions";
-import { getActiveOrganizationMembership } from "@/services/organizations/organization-service";
+import { requireOrganizationPermission, ORGANIZATION_PERMISSIONS } from "@/services/authorization/guards";
 import { OrganizationDashboardClient } from "@/components/organization/organization-dashboard-client";
 import { listPrinters } from "@/services/printers/printer-service";
-import { getCurrentSession } from "@/services/auth/session";
 
 export default async function OrganizationDashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  await requireOrganizationOrRedirect();
-  const [membership, session, printers, params] = await Promise.all([
-    getActiveOrganizationMembership(),
-    getCurrentSession(),
-    listPrinters(),
-    searchParams,
-  ]);
+  const context = await requireOrganizationPermission(ORGANIZATION_PERMISSIONS.PRINTERS_READ);
+  const [printers, params] = await Promise.all([listPrinters(context), searchParams]);
+  const { membership, organization, session } = context;
 
   if (!membership) redirect("/onboarding/organization");
-
-  const organization = membership.organization;
 
   const success =
     params.success === "printing"

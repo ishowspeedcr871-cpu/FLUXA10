@@ -87,19 +87,19 @@ export function EmployeePrintReviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto select-none">
+    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-start justify-center overflow-y-auto overscroll-contain p-2 sm:p-4 select-none">
       <div
         id="print-review-modal-container"
-        className="bg-[#0b0c14] border border-white/10 rounded-[28px] max-w-5xl w-full p-6 md:p-8 space-y-6 relative shadow-2xl my-8"
+        className="bg-[#0b0c14] border border-white/10 rounded-[24px] sm:rounded-[28px] max-w-5xl w-full max-h-none min-h-0 p-4 sm:p-6 md:p-8 space-y-5 sm:space-y-6 relative shadow-2xl my-3 sm:my-8"
       >
         {/* Top Header Row */}
-        <div className="flex items-center justify-between border-b border-white/5 pb-4">
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between gap-3 border-b border-white/5 pb-4">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="size-11 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
               <Sliders className="size-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-white uppercase tracking-wider flex items-center gap-2">
+              <h2 className="flex flex-wrap items-center gap-2 text-base sm:text-lg font-black text-white uppercase tracking-wider">
                 Print Job Review & Edit
                 <span className="text-[10px] bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 px-2 py-0.5 rounded-full font-bold">
                   Admin Overrides
@@ -122,7 +122,7 @@ export function EmployeePrintReviewModal({
         </div>
 
         {/* Info Highlights Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-white/[0.02] border border-white/5 rounded-2xl p-4 text-xs">
+        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 md:grid-cols-4 gap-3 bg-white/[0.02] border border-white/5 rounded-2xl p-3 sm:p-4 text-xs">
           <div>
             <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-wider">
               Customer Name
@@ -144,7 +144,7 @@ export function EmployeePrintReviewModal({
             <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-wider">
               Job ID reference
             </span>
-            <span className="text-slate-300 font-mono mt-0.5 block">#{job?.id?.toUpperCase()}</span>
+            <span className="text-slate-300 font-mono mt-0.5 block break-all">#{job?.id?.toUpperCase()}</span>
           </div>
           <div>
             <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-wider">
@@ -174,14 +174,14 @@ export function EmployeePrintReviewModal({
               </div>
 
               {/* High-Fidelity Canvas Display Container */}
-              <div className="p-4 bg-slate-950 flex items-center justify-center min-h-[340px] max-h-[380px] overflow-hidden">
+              <div className="p-3 sm:p-4 bg-slate-950 flex items-center justify-center min-h-[220px] sm:min-h-[340px] max-h-[65vh] sm:max-h-[380px] overflow-auto">
                 <RealPdfCanvas
                   fileName={job?.title || "Document.pdf"}
                   rawFile={job?.files?.[0]?.rawFile}
                   fileUrl={job?.files?.[0]?.url}
                   pageNum={1}
                   scale={0.5}
-                  className="max-h-[320px] w-auto shadow-2xl"
+                  className="max-h-[58vh] sm:max-h-[320px] w-auto shadow-2xl"
                 />
               </div>
 
@@ -523,12 +523,12 @@ export function EmployeePrintReviewModal({
               </div>
 
               {/* Action Trigger Buttons */}
-              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <div className="flex flex-col min-[380px]:flex-row items-stretch min-[380px]:items-center gap-3 w-full sm:w-auto justify-end">
                 <button
                   id="cancel-review-btn"
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white font-extrabold text-xs tracking-wider uppercase rounded-xl transition-all cursor-pointer"
+                  className="w-full min-[380px]:w-auto px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white font-extrabold text-xs tracking-wider uppercase rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -536,7 +536,7 @@ export function EmployeePrintReviewModal({
                   id="approve-release-btn"
                   type="submit"
                   disabled={isReleasing}
-                  className="px-6 py-2 bg-cyan-400 hover:bg-cyan-300 disabled:opacity-50 text-black font-black text-xs tracking-wider uppercase rounded-xl transition-all shadow-[0_0_15px_rgba(0,255,255,0.25)] cursor-pointer flex items-center gap-2"
+                  className="w-full min-[380px]:w-auto justify-center px-6 py-2 bg-cyan-400 hover:bg-cyan-300 disabled:opacity-50 text-black font-black text-xs tracking-wider uppercase rounded-xl transition-all shadow-[0_0_15px_rgba(0,255,255,0.25)] cursor-pointer flex items-center gap-2"
                 >
                   {isReleasing ? (
                     <span>Releasing...</span>

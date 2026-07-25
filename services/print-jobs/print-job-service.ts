@@ -26,8 +26,10 @@ export function getPrintJobLifecycle() {
   return lifecycle;
 }
 
-export async function getCustomerDashboard() {
-  const { session, organization } = await requireCustomerContext();
+type CustomerDashboardContext = Awaited<ReturnType<typeof requireCustomerContext>>;
+
+export async function getCustomerDashboard(context?: CustomerDashboardContext) {
+  const { session, organization } = context ?? await requireCustomerContext();
   const [recentJobs, activeJobs, completedJobs, unreadNotifications] = await prisma.$transaction([
     prisma.printJob.findMany({
       where: {

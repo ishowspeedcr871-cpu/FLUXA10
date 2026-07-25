@@ -106,9 +106,11 @@ export async function processWaitingJobs(organizationId: string) {
   }
 }
 
-export async function listPrintQueue(input: QueueQuery) {
+type QueueAccessContext = Awaited<ReturnType<typeof requireQueueAccess>>;
+
+export async function listPrintQueue(input: QueueQuery, context?: QueueAccessContext) {
   try {
-    const { session, organization } = await requireQueueAccess();
+    const { session, organization } = context ?? await requireQueueAccess();
 
     const query = queueQuerySchema.parse(input);
     const skip = (query.page - 1) * query.pageSize;
