@@ -63,7 +63,7 @@ export function OrganizationPortalLayout({
         {/* TOP STATUS HEADER BAR */}
         <header className="px-5 pt-6 pb-4 bg-black/60 backdrop-blur-md flex items-center justify-between z-40 border-b border-white/5 sticky top-0">
           {/* Logo */}
-          <Link href="/organization" className="flex flex-col items-start focus:outline-none">
+          <Link href="/organization" prefetch={true} className="flex flex-col items-start focus:outline-none">
             <span className="text-[20px] font-black tracking-[0.2em] text-accent-cyan leading-none">
               FLUXΛ
             </span>
@@ -85,6 +85,7 @@ export function OrganizationPortalLayout({
 
             <Link
               href="/profile"
+              prefetch={true}
               className="relative flex items-center justify-center size-9 rounded-full border border-accent-magenta/40 bg-black/40 hover:border-accent-magenta transition-all duration-300 overflow-hidden"
             >
               <User className="size-4 text-accent-magenta" />
@@ -104,6 +105,7 @@ export function OrganizationPortalLayout({
               <nav className="flex flex-col gap-6">
                 <Link 
                   href="/organization" 
+                  prefetch={true}
                   onClick={() => setIsMenuOpen(false)}
                   className="flex items-center gap-4 text-xl font-bold hover:text-accent-cyan transition-colors"
                 >
@@ -112,6 +114,7 @@ export function OrganizationPortalLayout({
                 </Link>
                 <Link 
                   href="/organization/members" 
+                  prefetch={true}
                   onClick={() => setIsMenuOpen(false)}
                   className="flex items-center gap-4 text-xl font-bold hover:text-accent-cyan transition-colors"
                 >
@@ -120,6 +123,7 @@ export function OrganizationPortalLayout({
                 </Link>
                 <Link 
                   href="/employee/customers" 
+                  prefetch={true}
                   onClick={() => setIsMenuOpen(false)}
                   className="flex items-center gap-4 text-xl font-bold hover:text-accent-cyan transition-colors"
                 >
@@ -128,6 +132,7 @@ export function OrganizationPortalLayout({
                 </Link>
                 <Link 
                   href="/employee/queue" 
+                  prefetch={true}
                   onClick={() => setIsMenuOpen(false)}
                   className="flex items-center gap-4 text-xl font-bold hover:text-accent-cyan transition-colors"
                 >
@@ -136,6 +141,7 @@ export function OrganizationPortalLayout({
                 </Link>
                 <Link 
                   href="/printers" 
+                  prefetch={true}
                   onClick={() => setIsMenuOpen(false)}
                   className="flex items-center gap-4 text-xl font-bold hover:text-accent-cyan transition-colors"
                 >
@@ -144,6 +150,7 @@ export function OrganizationPortalLayout({
                 </Link>
                 <Link 
                   href="/organization/intelligence" 
+                  prefetch={true}
                   onClick={() => setIsMenuOpen(false)}
                   className="flex items-center gap-4 text-xl font-bold hover:text-accent-cyan transition-colors"
                 >
@@ -152,6 +159,7 @@ export function OrganizationPortalLayout({
                 </Link>
                 <Link 
                   href="/organization/settings" 
+                  prefetch={true}
                   onClick={() => setIsMenuOpen(false)}
                   className="flex items-center gap-4 text-xl font-bold hover:text-accent-cyan transition-colors"
                 >
@@ -179,6 +187,7 @@ export function OrganizationPortalLayout({
         <nav className="absolute bottom-0 left-0 right-0 h-20 bg-black/90 backdrop-blur-md border-t border-white/10 flex items-center justify-around px-2 z-50 md:rounded-b-[40px]">
           <Link
             href="/organization"
+            prefetch={true}
             className={`flex flex-col items-center gap-1.5 py-1 px-3 transition-colors duration-300 ${
               currentNav === "dashboard" ? "text-accent-cyan" : "text-muted-foreground hover:text-white"
             }`}
@@ -189,6 +198,7 @@ export function OrganizationPortalLayout({
 
           <Link
             href="/printers"
+            prefetch={true}
             className={`flex flex-col items-center gap-1.5 py-1 px-3 transition-colors duration-300 ${
               currentNav === "printers" ? "text-accent-cyan" : "text-muted-foreground hover:text-white"
             }`}
@@ -199,6 +209,7 @@ export function OrganizationPortalLayout({
 
           <Link
             href="/organization/members"
+            prefetch={true}
             className={`flex flex-col items-center gap-1.5 py-1 px-3 transition-colors duration-300 ${
               currentNav === "members" ? "text-accent-cyan" : "text-muted-foreground hover:text-white"
             }`}
@@ -209,6 +220,7 @@ export function OrganizationPortalLayout({
 
           <Link
             href="/organization/settings"
+            prefetch={true}
             className={`flex flex-col items-center gap-1.5 py-1 px-3 transition-colors duration-300 ${
               currentNav === "settings" ? "text-accent-cyan" : "text-muted-foreground hover:text-white"
             }`}

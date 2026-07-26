@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 export const adminNavigationItems = [
-  { label: "Dashboard", href: "/dashboard", icon: Home },
+  { label: "Dashboard", href: "/organization", icon: Home },
   { label: "Printers", href: "/printers", icon: Printer },
   { label: "Employees", href: "/organization/members", icon: UsersRound },
   { label: "Customers", href: "/employee/customers", icon: UserRound },
