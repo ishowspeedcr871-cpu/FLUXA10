@@ -74,7 +74,7 @@ export function EmployeePortalLayout({ children, profile }: EmployeePortalLayout
         {/* DESKTOP SIDEBAR (Visible on md and above) */}
         <aside className="hidden md:flex flex-col w-64 border-r border-white/10 bg-[#08080c] p-6 z-40 shrink-0">
           <div className="mb-8">
-            <Link href="/employee" className="flex items-center gap-1.5 focus:outline-none">
+            <Link href="/employee" prefetch={true} className="flex items-center gap-1.5 focus:outline-none">
               <span className="text-2xl font-black tracking-[0.15em] text-accent-cyan font-sans drop-shadow-[0_0_10px_rgba(0,255,255,0.3)]">
                 FLUXA
               </span>
@@ -94,6 +94,7 @@ export function EmployeePortalLayout({ children, profile }: EmployeePortalLayout
                 <Link
                   key={item.id}
                   href={item.path}
+                  prefetch={true}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-200 relative ${
                     isActive 
                       ? "bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20 shadow-[0_0_15px_rgba(0,255,255,0.05)]" 
@@ -116,11 +117,11 @@ export function EmployeePortalLayout({ children, profile }: EmployeePortalLayout
           {/* Bottom user widget */}
           <div className="mt-auto pt-6 border-t border-white/5">
             <div className="flex items-center gap-3 mb-4 group relative">
-              <Link href="/employee/profile" className="size-10 rounded-full border border-accent-cyan/50 bg-accent-cyan/10 flex items-center justify-center text-accent-cyan transition-all group-hover:shadow-[0_0_15px_rgba(0,255,255,0.2)]">
+              <Link href="/employee/profile" prefetch={true} className="size-10 rounded-full border border-accent-cyan/50 bg-accent-cyan/10 flex items-center justify-center text-accent-cyan transition-all group-hover:shadow-[0_0_15px_rgba(0,255,255,0.2)]">
                 <User className="size-5" />
               </Link>
               <div className="flex-1 min-w-0">
-                <Link href="/employee/profile">
+                <Link href="/employee/profile" prefetch={true}>
                   <h4 className="text-xs font-bold text-white truncate hover:text-accent-cyan transition-colors cursor-pointer">{displayName}</h4>
                 </Link>
                 <p className="text-[10px] text-slate-400 font-medium truncate">{displayEmail}</p>
@@ -134,7 +135,7 @@ export function EmployeePortalLayout({ children, profile }: EmployeePortalLayout
             </div>
 
             <div className="flex bg-white/5 border border-white/10 rounded-full p-1 w-full justify-between">
-              <Link href="/employee" className="flex-1 text-center py-1.5 bg-white/10 rounded-full text-[10px] font-bold text-accent-cyan">
+              <Link href="/employee" prefetch={true} className="flex-1 text-center py-1.5 bg-white/10 rounded-full text-[10px] font-bold text-accent-cyan">
                 Home
               </Link>
               <form action={logoutAction} className="flex-1">
@@ -154,23 +155,23 @@ export function EmployeePortalLayout({ children, profile }: EmployeePortalLayout
           </div>
           
           <div className="flex items-center justify-between">
-            <Link href="/employee" className="flex items-center gap-1.5 focus:outline-none">
+            <Link href="/employee" prefetch={true} className="flex items-center gap-1.5 focus:outline-none">
               <span className="text-[22px] font-black tracking-[0.12em] text-accent-cyan font-sans">
                 FLUXA
               </span>
             </Link>
 
             <div className="flex bg-white/5 border border-white/10 rounded-full p-1">
-              <Link href="/employee" className="px-4 py-1.5 bg-white/10 rounded-full text-xs font-semibold text-accent-cyan">
+              <Link href="/employee" prefetch={true} className="px-4 py-1.5 bg-white/10 rounded-full text-xs font-semibold text-accent-cyan">
                 Home
               </Link>
-              <Link href="/employee/rewards" className="px-4 py-1.5 text-xs font-semibold text-muted-foreground hover:text-white transition-colors">
+              <Link href="/employee/rewards" prefetch={true} className="px-4 py-1.5 text-xs font-semibold text-muted-foreground hover:text-white transition-colors">
                 Rewards
               </Link>
             </div>
 
             <div className="flex items-center gap-2">
-              <Link href="/employee/profile" className="size-9 rounded-full border border-accent-cyan/50 bg-accent-cyan/10 flex items-center justify-center text-accent-cyan">
+              <Link href="/employee/profile" prefetch={true} className="size-9 rounded-full border border-accent-cyan/50 bg-accent-cyan/10 flex items-center justify-center text-accent-cyan">
                 <User className="size-4" />
               </Link>
               <NotificationBell portalType="employee" />
@@ -218,6 +219,7 @@ export function EmployeePortalLayout({ children, profile }: EmployeePortalLayout
               <Link 
                 key={item.id}
                 href={item.path} 
+                prefetch={true}
                 className={`flex flex-col items-center gap-1.5 py-1 px-3 ${
                   isActive ? "text-accent-cyan" : "text-muted-foreground hover:text-white"
                 }`}

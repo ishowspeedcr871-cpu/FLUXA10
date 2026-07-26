@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/services/auth/session";
 import { getSelectedOrganizationId } from "@/services/organizations/context";
@@ -35,7 +36,7 @@ function collectPermissionKeys(membership: SessionMembership) {
   );
 }
 
-export async function requireActiveOrganization(requiredPermission?: OrganizationPermission) {
+async function resolveActiveOrganizationContext() {
   const session = await getCurrentSession();
   if (!session) redirect("/login");
 
@@ -70,16 +71,6 @@ export async function requireActiveOrganization(requiredPermission?: Organizatio
     Object.values(ORGANIZATION_PERMISSIONS).forEach((p) => permissions.add(p));
   }
 
-  if (
-    requiredPermission &&
-    !permissions.has(requiredPermission) &&
-    !platformMembership &&
-    !isOrganizationOwner &&
-    !isAdmin
-  ) {
-    redirect("/dashboard?error=forbidden");
-  }
-
   return {
     session,
     user: session.user,
@@ -87,6 +78,34 @@ export async function requireActiveOrganization(requiredPermission?: Organizatio
     organization: membership.organization,
     permissions,
     isPlatformContext: Boolean(platformMembership && !membership),
+    platformMembership,
+    isOrganizationOwner,
+    isAdmin,
+  };
+}
+
+const getCachedActiveOrganizationContext = cache(resolveActiveOrganizationContext);
+
+export async function requireActiveOrganization(requiredPermission?: OrganizationPermission) {
+  const context = await getCachedActiveOrganizationContext();
+
+  if (
+    requiredPermission &&
+    !context.permissions.has(requiredPermission) &&
+    !context.platformMembership &&
+    !context.isOrganizationOwner &&
+    !context.isAdmin
+  ) {
+    redirect("/dashboard?error=forbidden");
+  }
+
+  return {
+    session: context.session,
+    user: context.user,
+    membership: context.membership,
+    organization: context.organization,
+    permissions: context.permissions,
+    isPlatformContext: context.isPlatformContext,
   };
 }
 

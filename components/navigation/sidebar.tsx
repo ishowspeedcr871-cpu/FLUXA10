@@ -41,6 +41,7 @@ export function Sidebar({ className, role = "admin" }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
               className={cn(
                 "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm text-muted-foreground transition hover:bg-white/10 hover:text-accent-cyan",
                 isActive && "bg-accent-cyan/10 text-accent-cyan shadow-cyan",

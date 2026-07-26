@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { getCurrentSession } from "@/services/auth/session";
 
@@ -18,12 +19,14 @@ export async function clearActiveOrganizationId() {
   cookieStore.delete(ACTIVE_ORGANIZATION_COOKIE_NAME);
 }
 
-export async function getSelectedOrganizationId() {
+async function resolveSelectedOrganizationId() {
   const cookieStore = await cookies();
   return cookieStore.get(ACTIVE_ORGANIZATION_COOKIE_NAME)?.value;
 }
 
-export async function getActiveOrganization() {
+export const getSelectedOrganizationId = cache(resolveSelectedOrganizationId);
+
+async function resolveActiveOrganization() {
   const session = await getCurrentSession();
   if (!session) return null;
 
@@ -35,3 +38,5 @@ export async function getActiveOrganization() {
   const activeMembership = membership ?? session.user.memberships[0];
   return activeMembership?.organization ?? null;
 }
+
+export const getActiveOrganization = cache(resolveActiveOrganization);

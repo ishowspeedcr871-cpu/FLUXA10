@@ -34,6 +34,7 @@ export function MobileBottomNav({ role = "admin" }: MobileBottomNavProps) {
           <Link
             key={item.href}
             href={item.href}
+            prefetch={true}
             className={
               isActive
                 ? "flex flex-col items-center gap-1 text-[11px] text-accent-cyan"

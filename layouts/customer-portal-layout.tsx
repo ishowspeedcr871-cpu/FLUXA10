@@ -53,7 +53,7 @@ export function CustomerPortalLayout({ children, userEmail = "fluxa1409@gmail.co
         {/* TOP STATUS HEADER BAR (FLUXA BRAND & TOP NAV) */}
         <header className="px-5 pt-6 pb-4 bg-black/60 backdrop-blur-md flex items-center justify-between z-40 border-b border-white/5 sticky top-0">
           {/* Logo */}
-          <Link href="/customer" className="flex items-center gap-1.5 focus:outline-none">
+          <Link href="/customer" prefetch={true} className="flex items-center gap-1.5 focus:outline-none">
             <span className="text-[22px] font-black tracking-[0.12em] text-accent-cyan font-sans filter drop-shadow-[0_0_12px_rgba(184,100,70,0.35)]">
               FLUXA
             </span>
@@ -94,6 +94,7 @@ export function CustomerPortalLayout({ children, userEmail = "fluxa1409@gmail.co
             {/* User Profile avatar icon with cyan neon glow ring */}
             <Link
               href="/customer/profile"
+              prefetch={true}
               className="relative flex items-center justify-center size-9 rounded-full border border-accent-cyan/40 bg-black/40 hover:border-accent-cyan transition-all duration-300 shadow-[0_0_10px_rgba(184,100,70,0.15)] overflow-hidden"
             >
               <div className="absolute inset-[1px] rounded-full border border-white/10 flex items-center justify-center text-accent-cyan">
@@ -116,6 +117,7 @@ export function CustomerPortalLayout({ children, userEmail = "fluxa1409@gmail.co
           {/* Dashboard */}
           <Link
             href="/customer"
+            prefetch={true}
             className={`flex flex-col items-center gap-1.5 py-1 px-3 transition-colors duration-300 ${
               currentNav === "dashboard" ? "text-accent-cyan" : "text-muted-foreground hover:text-white"
             }`}
@@ -127,6 +129,7 @@ export function CustomerPortalLayout({ children, userEmail = "fluxa1409@gmail.co
           {/* History */}
           <Link
             href="/customer/history"
+            prefetch={true}
             className={`flex flex-col items-center gap-1.5 py-1 px-3 transition-colors duration-300 ${
               currentNav === "history" ? "text-accent-cyan" : "text-muted-foreground hover:text-white"
             }`}
@@ -138,6 +141,7 @@ export function CustomerPortalLayout({ children, userEmail = "fluxa1409@gmail.co
           {/* Settings */}
           <Link
             href="/customer/settings"
+            prefetch={true}
             className={`flex flex-col items-center gap-1.5 py-1 px-3 transition-colors duration-300 ${
               currentNav === "settings" ? "text-accent-cyan" : "text-muted-foreground hover:text-white"
             }`}
@@ -149,6 +153,7 @@ export function CustomerPortalLayout({ children, userEmail = "fluxa1409@gmail.co
           {/* Profile / Logout */}
           <Link
             href="/customer/profile"
+            prefetch={true}
             className={`flex flex-col items-center gap-1.5 py-1 px-3 transition-colors duration-300 ${
               currentNav === "profile" ? "text-accent-cyan" : "text-muted-foreground hover:text-white"
             }`}
