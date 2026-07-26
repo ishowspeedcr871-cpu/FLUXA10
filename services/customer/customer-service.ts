@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { getCurrentSession } from "@/services/auth/session";
 import { getActiveOrganizationMembership } from "@/services/organizations/organization-service";
 
-export async function requireCustomerContext() {
+async function resolveCustomerContext() {
   const session = await getCurrentSession();
   if (!session || !session.user) {
     redirect("/login?portal=customer&next=/customer");
@@ -30,6 +31,8 @@ export async function requireCustomerContext() {
     organization: customerMembership.organization 
   };
 }
+
+export const requireCustomerContext = cache(resolveCustomerContext);
 
 export async function getCustomerProfile() {
   const { user, membership, organization } = await requireCustomerContext();

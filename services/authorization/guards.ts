@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { getCurrentSession } from "@/services/auth/session";
 import { getSelectedOrganizationId } from "@/services/organizations/context";
 
@@ -35,7 +36,7 @@ function collectPermissionKeys(membership: SessionMembership) {
   );
 }
 
-export async function requireActiveOrganization(requiredPermission?: OrganizationPermission) {
+async function resolveActiveOrganization(requiredPermission?: OrganizationPermission) {
   const session = await getCurrentSession();
   if (!session) redirect("/login");
 
@@ -89,6 +90,8 @@ export async function requireActiveOrganization(requiredPermission?: Organizatio
     isPlatformContext: Boolean(platformMembership && !membership),
   };
 }
+
+export const requireActiveOrganization = cache(resolveActiveOrganization);
 
 export async function requireOrganizationPermission(permission: OrganizationPermission) {
   return requireActiveOrganization(permission);
