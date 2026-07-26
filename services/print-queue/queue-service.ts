@@ -8,7 +8,7 @@ import { getActiveQueueVisibilityWhere } from "@/services/print-jobs/status-util
 
 export async function getEmployeeDashboard() {
   const { session, organization } = await requireQueueAccess();
-  const [queued, assignedToMe, printing, ready, urgent] = await prisma.$transaction([
+  const [queued, assignedToMe, printing, ready, urgent] = await Promise.all([
     prisma.printJob.count({ where: { organizationId: organization.id, status: "QUEUED" } }),
     prisma.printJob.count({
       where: {
@@ -151,7 +151,7 @@ export async function listPrintQueue(input: QueueQuery, context?: QueueAccessCon
           : query.sort === "priority"
             ? { priority: query.direction }
             : { createdAt: query.direction };
-    const [jobsRaw, total] = await prisma.$transaction([
+    const [jobsRaw, total] = await Promise.all([
       prisma.printJob.findMany({
         where,
         include: { customerUser: true, assignedUser: true, printer: true, files: true },
@@ -247,81 +247,68 @@ export async function releasePrintJobByOtp(otp: string) {
     throw new Error(`Please enter a valid ${OTP_DIGITS}-digit OTP code.`);
   }
 
-  // 1. Try finding in PrintJobOtp table by codeHash
-  let targetJobId: string | null = null;
+  // 1. Fetch foundOtp and printer in parallel to reduce DB round-trips
+  const [foundOtp, printer] = await Promise.all([
+    prisma.printJobOtp.findFirst({
+      where: {
+        codeHash: hashOtp(cleanOtp),
+        status: "ACTIVE",
+        expiresAt: { gt: new Date() },
+        printJob: { organizationId: organization.id },
+      },
+      include: { printJob: true },
+    }),
+    prisma.printer.findFirst({
+      where: {
+        organizationId: organization.id,
+        status: "ONLINE",
+        deletedAt: null,
+      },
+    }),
+  ]);
 
-  const foundOtp = await prisma.printJobOtp.findFirst({
-    where: {
-      codeHash: hashOtp(cleanOtp),
-      status: "ACTIVE",
-      expiresAt: { gt: new Date() },
-      printJob: { organizationId: organization.id },
-    },
-    include: { printJob: true },
-  });
+  let targetJobId: string | null = null;
+  let currentJob: any = null;
 
   if (foundOtp) {
     targetJobId = foundOtp.printJobId;
-    await prisma.printJobOtp.update({
-      where: { id: foundOtp.id },
-      data: {
-        status: "VERIFIED",
-        verifiedAt: new Date(),
-        verifiedByUserId: session.userId,
-      },
-    });
+    currentJob = foundOtp.printJob;
   } else {
     // 2. Fallback for legacy jobs with OTP columns on PrintJob, using indexed lookup.
-    const matchingJob = await prisma.printJob.findFirst({
+    currentJob = await prisma.printJob.findFirst({
       where: {
         organizationId: organization.id,
         status: { notIn: ["COMPLETED", "CANCELLED", "FAILED"] },
         OR: [{ otpCodeHash: hashOtp(cleanOtp) }, { otpCode: cleanOtp }],
       },
-      select: { id: true },
     });
 
-    if (matchingJob) {
-      targetJobId = matchingJob.id;
+    if (currentJob) {
+      targetJobId = currentJob.id;
     }
   }
 
   // 3. Validate existence
-  if (!targetJobId) {
+  if (!targetJobId || !currentJob) {
     console.error(`[RELEASE_OTP_FAILURE] OTP record not found or expired for OTP: ${cleanOtp}`);
     throw new Error("Invalid or expired collection OTP.");
   }
 
-  // 4. Update PrintJob to OTP_VERIFIED
-  const currentJob = await prisma.printJob.findUnique({ where: { id: targetJobId } });
-  if (!currentJob) throw new Error("Print job not found.");
-
-  await prisma.printJob.update({
-    where: { id: targetJobId },
-    data: {
-      status: "OTP_VERIFIED",
-      events: {
-        create: {
-          fromStatus: currentJob.status,
-          toStatus: "OTP_VERIFIED",
-          actorUserId: session.userId,
-          note: "OTP successfully verified by employee.",
-        },
-      },
-    },
-  });
-
-  // 5. Attempt to find an online printer and start printing automatically
-  const printer = await prisma.printer.findFirst({
-    where: {
-      organizationId: organization.id,
-      status: "ONLINE",
-      deletedAt: null,
-    },
-  });
-
+  // 4. Perform state transition in a single atomic transaction
   if (printer) {
     await prisma.$transaction([
+      ...(foundOtp
+        ? [
+            prisma.printJobOtp.update({
+              where: { id: foundOtp.id },
+              data: {
+                status: "VERIFIED",
+                verifiedAt: new Date(),
+                verifiedByUserId: session.userId,
+              },
+            }),
+          ]
+        : []),
       prisma.printer.update({
         where: { id: printer.id },
         data: { status: "BUSY" },
@@ -333,11 +320,20 @@ export async function releasePrintJobByOtp(otp: string) {
           printerId: printer.id,
           processingStartedAt: new Date(),
           events: {
-            create: {
-              fromStatus: "OTP_VERIFIED",
-              toStatus: "PRINTING",
-              note: `Printer "${printer.name}" detected online. Starting print automatically.`,
-            },
+            create: [
+              {
+                fromStatus: currentJob.status,
+                toStatus: "OTP_VERIFIED",
+                actorUserId: session.userId,
+                note: "OTP successfully verified by employee.",
+              },
+              {
+                fromStatus: "OTP_VERIFIED",
+                toStatus: "PRINTING",
+                actorUserId: session.userId,
+                note: `Printer "${printer.name}" detected online. Starting print automatically.`,
+              },
+            ],
           },
         },
       }),
@@ -348,20 +344,43 @@ export async function releasePrintJobByOtp(otp: string) {
       jobId: targetJobId,
     };
   } else {
-    // 6. No printer online, set to WAITING_FOR_PRINTER
-    await prisma.printJob.update({
-      where: { id: targetJobId },
-      data: {
-        status: "WAITING_FOR_PRINTER",
-        events: {
-          create: {
-            fromStatus: "OTP_VERIFIED",
-            toStatus: "WAITING_FOR_PRINTER",
-            note: "OTP Verified. No online printer found. Job is waiting for a printer connection.",
+    // No printer online, set to WAITING_FOR_PRINTER
+    await prisma.$transaction([
+      ...(foundOtp
+        ? [
+            prisma.printJobOtp.update({
+              where: { id: foundOtp.id },
+              data: {
+                status: "VERIFIED",
+                verifiedAt: new Date(),
+                verifiedByUserId: session.userId,
+              },
+            }),
+          ]
+        : []),
+      prisma.printJob.update({
+        where: { id: targetJobId },
+        data: {
+          status: "WAITING_FOR_PRINTER",
+          events: {
+            create: [
+              {
+                fromStatus: currentJob.status,
+                toStatus: "OTP_VERIFIED",
+                actorUserId: session.userId,
+                note: "OTP successfully verified by employee.",
+              },
+              {
+                fromStatus: "OTP_VERIFIED",
+                toStatus: "WAITING_FOR_PRINTER",
+                actorUserId: session.userId,
+                note: "OTP Verified. No online printer found. Job is waiting for a printer connection.",
+              },
+            ],
           },
         },
-      },
-    });
+      }),
+    ]);
     return {
       success: true,
       message: "OTP Verified! Job unlocked and waiting for printer connection.",
