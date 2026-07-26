@@ -20,6 +20,7 @@ export interface PdfCanvasProps {
   scale?: number;
   className?: string;
   onClick?: () => void;
+  lazy?: boolean;
 }
 
 function RealPdfCanvasComponent({
@@ -30,14 +31,16 @@ function RealPdfCanvasComponent({
   scale = 0.5,
   className = "",
   onClick,
+  lazy = true,
 }: PdfCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [rendered, setRendered] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(!lazy);
 
   useEffect(() => {
+    if (!lazy) return;
     const node = containerRef.current;
     if (!node) return;
 
@@ -53,7 +56,7 @@ function RealPdfCanvasComponent({
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [fileName, pageNum]);
+  }, [fileName, pageNum, lazy]);
 
   useEffect(() => {
     if (!isVisible) return;

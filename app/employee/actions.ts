@@ -34,71 +34,95 @@ export async function verifyOtpForReviewAction(otp: string) {
     const now = new Date();
     const otpHash = hashOtp(cleanOtp);
 
-    const foundOtp = await prisma.printJobOtp.findFirst({
-      where: {
-        codeHash: otpHash,
-        status: "ACTIVE",
-        expiresAt: { gt: now },
-        printJob: { organizationId: organization.id },
-      },
-      select: { id: true, printJobId: true, printJob: { select: { id: true, status: true } } },
-    });
+    const [foundOtp, matchingJob] = await Promise.all([
+      prisma.printJobOtp.findFirst({
+        where: {
+          codeHash: otpHash,
+          status: "ACTIVE",
+          expiresAt: { gt: now },
+          printJob: { organizationId: organization.id },
+        },
+        select: { id: true, printJobId: true, printJob: { select: { id: true, status: true } } },
+      }),
+      prisma.printJob.findFirst({
+        where: {
+          organizationId: organization.id,
+          status: { notIn: ["COMPLETED", "CANCELLED", "FAILED"] },
+          otpGeneratedAt: { gt: new Date(now.getTime() - 60 * 60 * 1000) },
+          OR: [{ otpCodeHash: otpHash }, { otpCode: cleanOtp }],
+        },
+        select: { id: true, status: true },
+      })
+    ]);
 
-    const matchingJob = foundOtp
-      ? null
-      : await prisma.printJob.findFirst({
-          where: {
-            organizationId: organization.id,
-            status: { notIn: ["COMPLETED", "CANCELLED", "FAILED"] },
-            otpGeneratedAt: { gt: new Date(now.getTime() - 60 * 60 * 1000) },
-            OR: [{ otpCodeHash: otpHash }, { otpCode: cleanOtp }],
-          },
-          select: { id: true, status: true },
-        });
-
-    const currentJob = foundOtp?.printJob ?? matchingJob;
+    const currentJob = foundOtp?.printJob ?? (foundOtp ? null : matchingJob);
     const targetJobId = currentJob?.id;
     if (!targetJobId || !currentJob) {
       return { success: false, error: "Invalid or expired collection OTP." };
     }
 
-    await prisma.$transaction([
-      ...(foundOtp
-        ? [
-            prisma.printJobOtp.update({
-              where: { id: foundOtp.id },
-              data: { status: "VERIFIED", verifiedAt: now, verifiedByUserId: session.userId },
-            }),
-          ]
-        : []),
-      ...(["DRAFT", "QUEUED", "OTP_GENERATED", "READY"].includes(currentJob.status)
-        ? [
-            prisma.printJob.update({
-              where: { id: currentJob.id },
-              data: {
-                status: "OTP_VERIFIED",
-                events: {
-                  create: {
-                    fromStatus: currentJob.status,
-                    toStatus: "OTP_VERIFIED",
-                    actorUserId: session.userId,
-                    note: "OTP successfully verified by employee. Job is now ready for review.",
-                  },
-                },
-              },
-            }),
-          ]
-        : []),
-    ]);
+    let result: any = null;
+    const isStatusPending = ["DRAFT", "QUEUED", "OTP_GENERATED", "READY"].includes(currentJob.status);
 
-    const result = await prisma.printJob.findFirst({
-      where: { id: targetJobId, organizationId: organization.id },
-      include: {
-        customerUser: true,
-        files: true,
-        printer: true,
-      },
-    });
+    if (isStatusPending) {
+      const transactionResults = await prisma.$transaction([
+        ...(foundOtp
+          ? [
+              prisma.printJobOtp.update({
+                where: { id: foundOtp.id },
+                data: { status: "VERIFIED", verifiedAt: now, verifiedByUserId: session.userId },
+              }),
+            ]
+          : []),
+        prisma.printJob.update({
+          where: { id: targetJobId },
+          data: {
+            status: "OTP_VERIFIED",
+            events: {
+              create: {
+                fromStatus: currentJob.status,
+                toStatus: "OTP_VERIFIED",
+                actorUserId: session.userId,
+                note: "OTP successfully verified by employee. Job is now ready for review.",
+              },
+            },
+          },
+          include: {
+            customerUser: true,
+            files: true,
+            printer: true,
+          },
+        }),
+      ]);
+      result = transactionResults[transactionResults.length - 1];
+    } else {
+      if (foundOtp) {
+        const transactionResults = await prisma.$transaction([
+          prisma.printJobOtp.update({
+            where: { id: foundOtp.id },
+            data: { status: "VERIFIED", verifiedAt: now, verifiedByUserId: session.userId },
+          }),
+          prisma.printJob.findFirst({
+            where: { id: targetJobId, organizationId: organization.id },
+            include: {
+              customerUser: true,
+              files: true,
+              printer: true,
+            },
+          }),
+        ]);
+        result = transactionResults[transactionResults.length - 1];
+      } else {
+        result = await prisma.printJob.findFirst({
+          where: { id: targetJobId, organizationId: organization.id },
+          include: {
+            customerUser: true,
+            files: true,
+            printer: true,
+          },
+        });
+      }
+    }
 
     if (!result) {
       return { success: false, error: "Invalid or expired collection OTP." };
@@ -132,11 +156,20 @@ export async function releaseJobWithUpdatedSettingsAction(
   try {
     const { session, organization } = await requireEmployeeContext();
 
-    // Fetch the current job
-    const job = await prisma.printJob.findUnique({
-      where: { id: jobId, organizationId: organization.id },
-      include: { printer: true },
-    });
+    // Fetch current job and online printer in parallel
+    const [job, onlinePrinter] = await Promise.all([
+      prisma.printJob.findUnique({
+        where: { id: jobId, organizationId: organization.id },
+        include: { printer: true },
+      }),
+      prisma.printer.findFirst({
+        where: {
+          organizationId: organization.id,
+          status: "ONLINE",
+          deletedAt: null,
+        },
+      }),
+    ]);
 
     if (!job) {
       return { success: false, error: "Print job not found." };
@@ -181,18 +214,8 @@ export async function releaseJobWithUpdatedSettingsAction(
     // Determine printer to send to
     let finalPrinterId = updatedSettings.printerId || job.printerId;
 
-    if (!finalPrinterId) {
-      // Find an online printer in the organization
-      const onlinePrinter = await prisma.printer.findFirst({
-        where: {
-          organizationId: organization.id,
-          status: "ONLINE",
-          deletedAt: null,
-        },
-      });
-      if (onlinePrinter) {
-        finalPrinterId = onlinePrinter.id;
-      }
+    if (!finalPrinterId && onlinePrinter) {
+      finalPrinterId = onlinePrinter.id;
     }
 
     // If we have a final printer, set state to PRINTING and atomically mark it busy with the job update.
@@ -370,26 +393,27 @@ export async function fetchLiveSettingsData() {
   try {
     const { organization, user, membership } = await getEmployeeProfile();
 
-    const printers = await prisma.printer.findMany({
-      where: { organizationId: organization.id, deletedAt: null },
-      orderBy: [{ status: "asc" }, { name: "asc" }],
-      take: 10,
-    });
-
-    const awaitingJobs = await prisma.printJob.findMany({
-      where: {
-        organizationId: organization.id,
-        status: { in: ["READY", "PRINTING", "QUEUED", "ASSIGNED"] },
-      },
-      include: {
-        customerUser: true,
-        files: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 20,
-    });
+    const [printers, awaitingJobs] = await Promise.all([
+      prisma.printer.findMany({
+        where: { organizationId: organization.id, deletedAt: null },
+        orderBy: [{ status: "asc" }, { name: "asc" }],
+        take: 10,
+      }),
+      prisma.printJob.findMany({
+        where: {
+          organizationId: organization.id,
+          status: { in: ["READY", "PRINTING", "QUEUED", "ASSIGNED"] },
+        },
+        include: {
+          customerUser: true,
+          files: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 20,
+      })
+    ]);
 
     return {
       success: true,

@@ -201,6 +201,7 @@ function EmployeePrintReviewModalComponent({
                   pageNum={1}
                   scale={0.5}
                   className="max-h-[58vh] sm:max-h-[320px] w-auto shadow-2xl"
+                  lazy={false}
                 />
               </div>
 

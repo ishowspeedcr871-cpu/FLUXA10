@@ -198,9 +198,34 @@ export function EmployeeDashboardClient({
     reason: string,
   ) => {
     if (!reviewJob) return;
+
+    const previousJobs = jobs;
+    const targetStatus = updatedSettings.printerId ? "PRINTING" : "WAITING_FOR_PRINTER";
+
+    // Close the review modal instantly to feel immediate
+    const originalReviewJob = reviewJob;
+    setReviewJob(null);
     setReleasing(true);
+
+    // Optimistic local state update
+    setJobs((prev) =>
+      prev.map((j) =>
+        j.id === originalReviewJob.id
+          ? {
+              ...j,
+              status: targetStatus,
+              color: updatedSettings.color,
+              copies: updatedSettings.copies,
+              duplex: updatedSettings.duplex,
+              estimatedCost: newCost,
+              printerId: updatedSettings.printerId || null,
+            }
+          : j,
+      ),
+    );
+
     const res = await releaseJobWithUpdatedSettingsAction(
-      reviewJob.id,
+      originalReviewJob.id,
       updatedSettings,
       newCost,
       reason,
@@ -208,35 +233,60 @@ export function EmployeeDashboardClient({
     setReleasing(false);
 
     if (res.success) {
-      setReviewJob(null);
       setSuccess(res.message || "Print Job approved and sent to printer!");
-      const liveJobs = await fetchLiveQueue();
-      setJobs(liveJobs);
+      // Silently fetch fresh queue in the background using transition so it doesn't block
+      startTransition(async () => {
+        try {
+          const liveJobs = await fetchLiveQueue({
+            status: statusFilter === "ALL" ? "all" : statusFilter,
+            priority: priorityFilter === "ALL" ? "all" : priorityFilter,
+            q: searchQuery,
+          });
+          setJobs(liveJobs);
+        } catch (err) {
+          // Silently handle polling error
+        }
+      });
       setTimeout(() => setSuccess(null), 5000);
     } else {
+      // Revert optimistic update
+      setJobs(previousJobs);
+      setReviewJob(originalReviewJob);
       setError(res.error || "Failed to release job");
     }
   };
 
   const handleStatusChange = async (jobId: string, newStatus: string) => {
+    const previousJobs = jobs;
+    setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status: newStatus } : j)));
+
     const res = await updateJobStatusAction(jobId, newStatus);
-    if (res.success) {
-      setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status: newStatus } : j)));
+    if (!res.success) {
+      setJobs(previousJobs);
+      setError(res.error || "Failed to update status");
     }
   };
 
   const handlePriorityChange = async (jobId: string, newPriority: string) => {
+    const previousJobs = jobs;
+    setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, priority: newPriority } : j)));
+
     const res = await updateJobPriorityAction(jobId, newPriority);
-    if (res.success) {
-      setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, priority: newPriority } : j)));
+    if (!res.success) {
+      setJobs(previousJobs);
+      setError(res.error || "Failed to update priority");
     }
   };
 
   const handleCancelJob = async (jobId: string) => {
     if (!confirm("Are you sure you want to cancel this print job?")) return;
+    const previousJobs = jobs;
+    setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status: "CANCELLED" } : j)));
+
     const res = await cancelJobAction(jobId);
-    if (res.success) {
-      setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status: "CANCELLED" } : j)));
+    if (!res.success) {
+      setJobs(previousJobs);
+      setError(res.error || "Failed to cancel job");
     }
   };
 
